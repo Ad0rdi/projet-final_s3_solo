@@ -1,10 +1,9 @@
 # main.py
-import inspect
-
 import customtkinter as ctk
 import tkinter as tk
+from tkinter import ttk
 
-from PIL.ImageOps import expand
+from click import style
 
 from recherche import SearchWidget
 from dataframe import create_dataframe
@@ -20,6 +19,8 @@ class MainApp(ctk.CTk):
         self.data = create_dataframe("BD_EAE_faunique_Quebec.scsv")
         self.title("Aqua-Inva")
         self.carte = PseudoCarte(data=self.data, master=self)
+        self.search_widget = None
+        self.addObs = None
         self.graph = None
         self.create_menu()
         self.show_accueil()

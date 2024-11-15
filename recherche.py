@@ -1,14 +1,16 @@
 #Groupe-Widget de recherche et ses fonctionnalités
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from main import MainApp
 
 import customtkinter as ctk
 import tkinter as tk
-import numpy
 
-#Classe principale 
+#Classe principale
 class SearchWidget(ctk.CTkFrame):
-    def __init__(self, data, master=None):
+    def __init__(self, data, master:'MainApp'=None):
         super().__init__(master)
-        self.master = master
+        self.master:'MainApp' = master
 
         self.content = tk.StringVar()
         self.content.trace("w", lambda name, index,mode, var=self.content: self.changed(var))
@@ -20,7 +22,14 @@ class SearchWidget(ctk.CTkFrame):
         self.max = False
         self.nb_page = 1
         self.configure(height=self.master.winfo_screenheight()-200,width=5, bg_color="white",fg_color="white")
-        # self.configure(width=5)
+        self.label_page=None
+        self.display_label = None
+        self.resultats = None
+
+        #buttons
+        self.button_left = None
+        self.button_right = None
+
         self.create_widgets()
 
     #Fonction qui recherche dans le dataframe
@@ -28,13 +37,13 @@ class SearchWidget(ctk.CTkFrame):
         results=[]
 
         if self.text!="" and self.text!=" ": #S'assure qu'il y a une entrée dans le champ
-            if(side==0): #Si la recherche est lancée à partir d'un changement de texte, relancer la recherche à partir du début du dataframe
+            if side==0: #Si la recherche est lancée à partir d'un changement de texte, relancer la recherche à partir du début du dataframe
                 self.x=0
                 self.y=0
                 self.nb_page = 1
                 self.max = False
 
-            if(side>=0): #Si la recherche se fait en avant
+            if side>=0: #Si la recherche se fait en avant
                 i = 0
                 #self.y=0
                 for line in self.datasearch[self.y:]: #Parcoure chaque colonne du dataframe
@@ -45,7 +54,7 @@ class SearchWidget(ctk.CTkFrame):
                         j+=1
                         if text.upper() in case.upper(): #Si la recherche se trouve dans la case
                             results.append(line)
-                            if(len(results)>=20): #Limite à 20 résultats
+                            if len(results)>=20: #Limite à 20 résultats
                                 self.x+=j
                                 self.y+=i
                                 self.display(results)
@@ -59,7 +68,7 @@ class SearchWidget(ctk.CTkFrame):
         self.text = event.get()
         if self.text!="" and self.text!=" ": self.search(self.text, 0) #S'assure qu'il y a une entrée dans le champ
         else:
-            self.labelpage.configure(text="-")
+            self.label_page.configure(text="-")
             self.max = True 
             self.resultats.destroy()
             self.frame()
@@ -67,81 +76,79 @@ class SearchWidget(ctk.CTkFrame):
     #Création des widgets
     def create_widgets(self):
         self.grid(row=0, column=0, padx=20, pady=5, sticky="n")
-        self.pack_propagate(0)
+        self.pack_propagate(False)
         
         #Label recherche
-        self.uplabel = ctk.CTkLabel(self, text = "Rechercher :                    ", bg_color="white",text_color="black")
-        self.uplabel.pack(side=tk.TOP)
+        top_label = ctk.CTkLabel(self, text = "Rechercher :                    ", bg_color="white",text_color="black")
+        top_label.pack(side=tk.TOP)
 
         #Entry du champ de recherche
-        self.champ = ctk.CTkEntry(self, placeholder_text="Rechercher", textvariable=self.content, bg_color="white",text_color="black",fg_color="white")
-        self.champ.pack()
+        champ = ctk.CTkEntry(self, placeholder_text="Rechercher", textvariable=self.content, bg_color="white",text_color="black",fg_color="white")
+        champ.pack()
 
         #Crée le frame de résultats
         self.frame()
 
         #Frame du menu pour changer de page
-        self.pagemenu = ctk.CTkFrame(self, bg_color="white",fg_color="white")
-        self.pagemenu.pack(side=tk.BOTTOM)
+        pagemenu = ctk.CTkFrame(self, bg_color="white",fg_color="white")
+        pagemenu.pack(side=tk.BOTTOM)
 
         #Bouton pour retourner au début
-        self.buttonleft = ctk.CTkButton(self.pagemenu, text="|<-", command=self.gauche, width=30)
-        self.buttonleft.grid(row=0, column=0, sticky="n", padx=20)
+        self.button_left = ctk.CTkButton(pagemenu, text="|<-", command=self.gauche, width=30)
+        self.button_left.grid(row=0, column=0, sticky="n", padx=20)
 
         #Bouton pour aller à la page suivante
-        self.buttonright = ctk.CTkButton(self.pagemenu, text="->", command=self.droite, width=30)
-        self.buttonright.grid(row=0, column=2, sticky="n", padx=20)
+        self.button_right = ctk.CTkButton(pagemenu, text="->", command=self.droite, width=30)
+        self.button_right.grid(row=0, column=2, sticky="n", padx=20)
 
         #Label qui affiche le numéro de page
-        self.labelpage = ctk.CTkLabel(self.pagemenu, text = 1, bg_color="white",fg_color="white",text_color="black")
-        self.labelpage.grid(row=0, column=1, sticky="n", padx=5)
+        self.label_page = ctk.CTkLabel(pagemenu, text = "1", bg_color="white", fg_color="white", text_color="black")
+        self.label_page.grid(row=0, column=1, sticky="n", padx=5)
 
         #Label qui affiche infos supplémentaires
-        self.displaylabel = ctk.CTkLabel(self.master, text=None, compound="left", justify="left", anchor="w",fg_color="white")
-        self.displaylabel.configure(text="Date : AAAA-MM-JJ\nPlan d'eau :\nRégion : \nLatitude : Y, Longitude X\nNom latin :\nEspèce :", bg_color="white",text_color="black")
-        self.displaylabel.grid(row=0, column=1, sticky="n", padx=5)
+        self.display_label = ctk.CTkLabel(self.master, text="", compound="left", justify="left", anchor="w", fg_color="white")
+        self.display_label.configure(text="Date : AAAA-MM-JJ\nPlan d'eau :\nRégion : \nLatitude : Y, Longitude X\nNom latin :\nEspèce :", bg_color="white", text_color="black")
+        self.display_label.grid(row=0, column=1, sticky="n", padx=5)
 
     #Fonction d'affichage des résultats
     def display(self, results):
         #Rafraîchissement
         self.master.carte.del_waypoint()
         self.resultats.destroy()
-        if(self.max==False):
-            self.labelpage.configure(text=self.nb_page)
-            self.buttonright.configure(state=tk.ACTIVE)
+        if not self.max:
+            self.label_page.configure(text=self.nb_page)
+            self.button_right.configure(state=tk.ACTIVE)
         else: 
-            self.labelpage.configure(text="Max")
-            self.buttonright.configure(state=tk.DISABLED)
+            self.label_page.configure(text="Max")
+            self.button_right.configure(state=tk.DISABLED)
 
         self.label_collection=[]
         self.frame()
 
         #Crée un widget label pour chacun des résultats
-        index = 0
         for i, result in enumerate(results):
             for j, case in enumerate(result):
                  if str(self.text).upper() in str(case).upper():
-                     index = j
-            reslab = ResultLabel(smalltext=result[index], bigtext = result, supermaster=self, master=self.resultats)
-            self.label_collection.append(reslab)
-            self.label_collection[i].pack(expand=True,side=tk.TOP)
+                    res_label = ResultLabel(smalltext=result[j], bigtext = result, display=self.displayresult,carte=self.master.carte, master=self.resultats)
+                    self.label_collection.append(res_label)
+                    self.label_collection[i].pack(expand=True,side=tk.TOP)
 
     #Fonction qui crée le frame des résultats
     def frame(self):
         self.resultats = ctk.CTkFrame(self, width=280, height=1000, border_width=2, border_color="black", bg_color="white",fg_color="gray75")
-        self.resultats.pack_propagate(0)
+        self.resultats.pack_propagate(False)
         self.resultats.pack(expand=1,fill="both")
 
     #Fonction event callback du bouton gauche
     def gauche(self):
-        if(self.nb_page>1):
+        if self.nb_page>1:
             self.nb_page = 1
             self.max = False
             self.search(self.text, 0)
 
     #Fonction event callback du bouton droite
     def droite(self):
-        if(self.max==False):
+        if not self.max:
             self.nb_page +=1
             self.search(self.text, 1)
 
@@ -159,25 +166,27 @@ class SearchWidget(ctk.CTkFrame):
         tab += "Groupe : "+ str(line[5])+"\n"
         tab += "Nom latin : "+ str(line[6])+ "\n"
         tab += "Espèce : "+ str(line[7])
-        self.displaylabel.configure(text=tab,text_color="black")
+        self.display_label.configure(text=tab, text_color="black")
 
 #Classe de un label résultat
 class ResultLabel(ctk.CTkLabel):
-    def __init__(self, smalltext, bigtext, supermaster, master=None):
+    def __init__(self, smalltext, bigtext, display,carte, master=None):
         super().__init__(master)
         self.master = master
-        self.supermaster = supermaster
+        self.display = display
+        self.carte=carte
         self.smalltext = smalltext
         self.bigtext = bigtext
 
         self.configure(text=smalltext, fg_color="white", width=197,text_color="black")
-        i=0
         self.bind("<ButtonRelease-1>", command=lambda event:self.on_res_click(self.bigtext))
 
     def on_res_click(self, line):
-        self.supermaster.displayresult(line)
-        try:line4=float(line[4])
-        except Exception as e:
-            self.supermaster.master.carte.del_waypoint()
+        self.display(line)
+        try:
+            line4=float(line[4])
+            line3 = float(line[3])
+        except TypeError:
+            self.carte.del_waypoint()
             return
-        self.supermaster.master.carte.set_waypoint(line[4],line[3])
+        self.carte.set_waypoint(line4,line3)

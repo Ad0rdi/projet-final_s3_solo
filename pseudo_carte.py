@@ -1,4 +1,7 @@
 # Fichier pour la pseudo carte
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from main import MainApp
 
 import customtkinter as ctk
 import tkinter as tk
@@ -26,9 +29,9 @@ class PseudoCarte(ctk.CTkFrame):
     *save_simple_map()* comme qualité maximal de la carte
     """
 
-    def __init__(self, data, master=None):
+    def __init__(self, data, master:'MainApp'=None):
         super().__init__(master)
-
+        self.master:'MainApp'=master
         self.data = data
         self.graph = None
         self.canvas = ctk.CTkCanvas(self,bg="#d0e4f5",)
@@ -189,7 +192,7 @@ class PseudoCarte(ctk.CTkFrame):
             points.append((px, py))
         return points
 
-    def draw(self, clickable=True, simply=None):
+    def draw(self):
         """Afficher la carte"""
         self.canvas.delete("all")
         for i, poly in enumerate(self.simplified_map):

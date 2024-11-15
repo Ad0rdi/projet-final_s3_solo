@@ -10,6 +10,15 @@ class addObsWidget(ctk.CTkFrame):
         super().__init__(master)
         self.master = master
         self.configure(fg_color="transparent")
+
+        #Initialisation des widgets
+        self.mainButton = None
+        self.eauNomEntry=None
+        self.habitatEntry=None
+        self.groupeEntry=None
+        self.latinEntry=None
+        self.nomEntry=None
+
         self.create_mainwidget()
 
     #Création du widget bouton de base
@@ -74,8 +83,9 @@ class addObsWidget(ctk.CTkFrame):
 
         #Ajout de la ligne
         self.master.data.loc[len(self.master.data)]=[str(date.today()), self.eauNomEntry.get(), habitat, region, y, x, groupe, latin, self.nomEntry.get(), "Ajouté par utilisateur via Aqua-Inva"]
-        try: self.master.data.to_csv("BD_EAE_faunique_Quebec.scsv", index=False, sep=';',encoding='latin1') #Sauvegarde
-        except Exception as e: #Si pandas ne peut pas sauvegarder le dataframe dans le csv, ça veut dire que le csv est ouvert ailleurs
+        try:
+            self.master.data.to_csv("BD_EAE_faunique_Quebec.scsv", index=False, sep=';',encoding='latin1') #Sauvegarde
+        except ValueError as e : #Si pandas ne peut pas sauvegarder le dataframe dans le csv, ça veut dire que le csv est ouvert ailleurs
             self.popup("Erreur", "Le fichier de données est ouvert ailleurs, veuillez le fermer")
             self.refresh()
 
