@@ -94,7 +94,7 @@ class addObsWidget(ctk.CTkFrame):
 
     #Fonction de rafraîchissement
     def refresh(self):
-        self.master.search_widget.reloadData() 
+        self.master.search_widget.reload_data()
 
         #Rafraîchissement des champs
         self.eauNomEntry.destroy()
