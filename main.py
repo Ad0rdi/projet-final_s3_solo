@@ -75,4 +75,5 @@ class MainApp(ctk.CTk):
 
 if __name__ == "__main__":
     app = MainApp()
+    app.wm_iconbitmap('Aqua-inva.ico')
     app.mainloop()
