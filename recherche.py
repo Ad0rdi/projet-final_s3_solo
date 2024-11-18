@@ -19,7 +19,7 @@ class SearchWidget(ctk.CTkFrame):
         self.content = tk.StringVar()
         self.content.trace("w", self.on_text_change)
         self.after_id = None
-        self.load_delay=500 # ms
+        self.load_delay=250 # ms
 
         self.data = data.drop(columns='type_observation', errors='ignore').reset_index(drop=True)
         self.search_data = self.data[['nom_commun', 'especes']]
@@ -146,7 +146,7 @@ class SearchWidget(ctk.CTkFrame):
         for i, result in enumerate(results):
             res_label = ResultLabel(info=result, display=self.displayresult, carte=self.master.carte, master=self.resultats)
             self.label_collection.append(res_label)
-            self.label_collection[i].pack(expand=True, side=tk.TOP, fill="x")
+            self.label_collection[i].pack(side=tk.TOP, fill="x")
 
     # Fonction qui crée le frame des résultats
     def frame(self):
@@ -197,15 +197,19 @@ class ResultLabel(ctk.CTkFrame):
         subtitle = ctk.CTkLabel(self, text=info['especes'], text_color="gray25", font=("Helvetica", 12, "italic"))
         text = info['region'] + " - " + info['date']
         text = ctk.CTkLabel(self, text=text, text_color="black", font=("Helvetica", 10, "italic"))
-        title.grid(row=0, column=0, pady=(2, 0))
+        title.grid(row=0, column=0, pady=(4, 0))
         subtitle.grid(row=1, column=0)
-        text.grid(row=2, column=0, pady=(0, 2))
+        text.grid(row=2, column=0, pady=(0, 4))
 
         self.grid_columnconfigure(0, weight=1)
-        self.configure(bg_color="white", fg_color="white", border_color="black", border_width=2)
+        self.configure(bg_color="white", fg_color="transparent", border_color="black", border_width=2)
 
         for child in self.winfo_children():
             child.bind("<ButtonRelease-1>", command=lambda event: self.on_res_click(self.info))
+            child.bind("<Enter>", self.on_hover)
+            child.bind("<Leave>", self.on_leave)
+        self.bind("<Enter>", self.on_hover) # for testing
+        self.bind("<Leave>", self.on_leave)
 
     def on_res_click(self, line):
         self.display(line)
@@ -216,3 +220,10 @@ class ResultLabel(ctk.CTkFrame):
             self.carte.del_waypoint()
             return
         self.carte.set_waypoint(lon, lat)
+
+    def on_hover(self, event):
+        # self.configure(bg_color="gray75")
+        self.configure(border_color="maroon", border_width=3)
+    def on_leave(self, event):
+        # self.configure(bg_color="white")
+        self.configure(border_color="black", border_width=2)
