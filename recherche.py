@@ -1,192 +1,229 @@
-#Groupe-Widget de recherche et ses fonctionnalités
+# Groupe-Widget de recherche et ses fonctionnalités
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import MainApp
 
+import math
+import pandas as pd
+import difflib
 import customtkinter as ctk
 import tkinter as tk
 
-#Classe principale
+
+# Classe principale
 class SearchWidget(ctk.CTkFrame):
-    def __init__(self, data, master:'MainApp'=None):
+    def __init__(self, data, master: 'MainApp' = None):
         super().__init__(master)
-        self.master:'MainApp' = master
+        self.master: 'MainApp' = master
 
         self.content = tk.StringVar()
-        self.content.trace("w", lambda name, index,mode, var=self.content: self.changed(var))
-        self.datasearch = data.drop(columns=['habitat','type_observation'], errors='ignore').to_numpy()
+        self.content.trace("w", self.on_text_change)
+        self.after_id = None
+        self.load_delay=250 # ms
+
+        self.data = data.drop(columns='type_observation', errors='ignore').reset_index(drop=True)
+        self.search_data = self.data[['nom_commun', 'especes']]
+        self.results_data = None
         self.label_collection = []
-        self.text = ""
-        self.x = 0
-        self.y = 0
-        self.max = False
+
+        # Variables de pagination
         self.nb_page = 1
-        self.configure(height=self.master.winfo_screenheight()-200,width=5, bg_color="white",fg_color="white")
-        self.label_page=None
+        self.current_page = 1
+        self.nb_res_par_page = 7
+
+        self.configure(height=self.master.winfo_screenheight() - 200, width=5, bg_color="white", fg_color="white")
+        self.label_page = None
         self.display_label = None
         self.resultats = None
 
-        #buttons
+        # buttons
         self.button_left = None
         self.button_right = None
 
         self.create_widgets()
 
-    #Fonction qui recherche dans le dataframe
-    def search(self, text, side):
-        results=[]
+    def on_text_change(self, *args):
+        if self.after_id is not None:
+            self.after_cancel(self.after_id)
+        self.after_id = self.after(self.load_delay, self.search, self.content.get())
 
-        if self.text!="" and self.text!=" ": #S'assure qu'il y a une entrée dans le champ
-            if side==0: #Si la recherche est lancée à partir d'un changement de texte, relancer la recherche à partir du début du dataframe
-                self.x=0
-                self.y=0
-                self.nb_page = 1
-                self.max = False
+    # Fonction qui recherche dans le dataframe
+    def search(self, text=None, ):
 
-            if side>=0: #Si la recherche se fait en avant
-                i = 0
-                #self.y=0
-                for line in self.datasearch[self.y:]: #Parcoure chaque colonne du dataframe
-                    i+=1
-                    j = 0
-                    for case in line: #Parcoure chaque case de la colonne
-                        case = str(case) #Transforme en string pour le upper()
-                        j+=1
-                        if text.upper() in case.upper(): #Si la recherche se trouve dans la case
-                            results.append(line)
-                            if len(results)>=20: #Limite à 20 résultats
-                                self.x+=j
-                                self.y+=i
-                                self.display(results)
-                                return
+        # Si la recherche est lancée à partir d'un changement de texte, relancer la recherche à partir du début du dataframe.
+        if text is not None:  # Si pas de texte, c'est qu'on change de page
+            self.results_data = pd.DataFrame(columns=self.data.columns)
+            text = text.strip()
+            if text == "" or text == "Rechercher":
+                self.label_page.configure(text="-")
+                self.resultats.destroy()
+                self.frame()
+                self.button_left.configure(state=tk.DISABLED)
+                self.button_right.configure(state=tk.DISABLED)
+                return
 
-                self.max = True     
-                self.display(results)
+            #Filtre les résultats selon le texte entré
+            min_sim_ratio = 0.8  # ratio minimal de similitude des deux strings
+            masque = self.search_data.map(lambda x: text.lower() in x.lower() or difflib.SequenceMatcher(a=x.lower(), b=text.lower()).quick_ratio() >= min_sim_ratio )
+            results = self.search_data[masque.any(axis=1)].reset_index(drop=False)
+            self.results_data = self.data.iloc[results['index']]
 
-    #Fonction event callback du widget entry qui réagit quand le texte change
-    def changed(self, event):
-        self.text = event.get()
-        if self.text!="" and self.text!=" ": self.search(self.text, 0) #S'assure qu'il y a une entrée dans le champ
-        else:
-            self.label_page.configure(text="-")
-            self.max = True 
-            self.resultats.destroy()
-            self.frame()
+            self.nb_page = math.ceil(self.results_data.shape[0] / self.nb_res_par_page)
+            self.current_page = 1
 
-    #Création des widgets
+        list_results = []
+
+        start = (self.current_page - 1) * 7
+        for i, row in self.results_data[start:].iterrows():
+            # print(nb, ";", i, " : ", row['nom_commun'], " - ", row['especes'])
+            list_results.append(row)
+            if len(list_results) >= self.nb_res_par_page:
+                break
+        self.display(list_results)
+
+    # Création des widgets
     def create_widgets(self):
         self.grid(row=0, column=0, padx=20, pady=5, sticky="n")
         self.pack_propagate(False)
-        
-        #Label recherche
-        top_label = ctk.CTkLabel(self, text = "Rechercher :                    ", bg_color="white",text_color="black")
+
+        # Label recherche
+        top_label = ctk.CTkLabel(self, text="Rechercher :                    ", bg_color="white", text_color="black")
         top_label.pack(side=tk.TOP)
 
-        #Entry du champ de recherche
-        champ = ctk.CTkEntry(self, placeholder_text="Rechercher", textvariable=self.content, bg_color="white",text_color="black",fg_color="white")
+        # Entry du champ de recherche
+        champ = ctk.CTkEntry(self, textvariable=self.content, bg_color="white", text_color="black", fg_color="white")
         champ.pack()
 
-        #Crée le frame de résultats
+        # Crée le frame de résultats
         self.frame()
 
-        #Frame du menu pour changer de page
-        pagemenu = ctk.CTkFrame(self, bg_color="white",fg_color="white")
+        # Frame du menu pour changer de page
+        pagemenu = ctk.CTkFrame(self, bg_color="white", fg_color="white")
         pagemenu.pack(side=tk.BOTTOM)
 
-        #Bouton pour retourner au début
-        self.button_left = ctk.CTkButton(pagemenu, text="|<-", command=self.gauche, width=30)
+        # Bouton pour retourner au début
+        self.button_left = ctk.CTkButton(pagemenu, text="<-", command=self.bt_gauche, width=30)
         self.button_left.grid(row=0, column=0, sticky="n", padx=20)
 
-        #Bouton pour aller à la page suivante
-        self.button_right = ctk.CTkButton(pagemenu, text="->", command=self.droite, width=30)
+        # Bouton pour aller à la page suivante
+        self.button_right = ctk.CTkButton(pagemenu, text="->", command=self.bt_droite, width=30)
         self.button_right.grid(row=0, column=2, sticky="n", padx=20)
 
-        #Label qui affiche le numéro de page
-        self.label_page = ctk.CTkLabel(pagemenu, text = "1", bg_color="white", fg_color="white", text_color="black")
+        # Label qui affiche le numéro de page
+        self.label_page = ctk.CTkLabel(pagemenu, text="1", bg_color="white", fg_color="white", text_color="black")
         self.label_page.grid(row=0, column=1, sticky="n", padx=5)
 
-        #Label qui affiche infos supplémentaires
+        # Label qui affiche infos supplémentaires
         self.display_label = ctk.CTkLabel(self.master, text="", compound="left", justify="left", anchor="w", fg_color="white")
-        self.display_label.configure(text="Date : AAAA-MM-JJ\nPlan d'eau :\nRégion : \nLatitude : Y, Longitude X\nNom latin :\nEspèce :", bg_color="white", text_color="black")
+        self.display_label.configure(text="Date : AAAA-MM-JJ\nPlan d'eau :\nRégion : \nLatitude : Y, Longitude X\nNom latin :\nEspèce :",
+                                     bg_color="white", text_color="black")
         self.display_label.grid(row=0, column=1, sticky="n", padx=5)
 
-    #Fonction d'affichage des résultats
+    # Fonction d'affichage des résultats
     def display(self, results):
-        #Rafraîchissement
+        # Rafraîchissement
         self.master.carte.del_waypoint()
         self.resultats.destroy()
-        if not self.max:
-            self.label_page.configure(text=self.nb_page)
+
+        text_page = str(self.current_page) + "/" + str(self.nb_page)
+        self.label_page.configure(text=text_page)
+
+
+        if self.current_page < self.nb_page:
             self.button_right.configure(state=tk.ACTIVE)
-        else: 
-            self.label_page.configure(text="Max")
+        else:
             self.button_right.configure(state=tk.DISABLED)
 
-        self.label_collection=[]
+        if self.current_page > 1:
+            self.button_left.configure(state=tk.ACTIVE)
+        else:
+            self.button_left.configure(state=tk.DISABLED)
+
+        self.label_collection = []
         self.frame()
 
-        #Crée un widget label pour chacun des résultats
+        # #Crée un widget label pour chacun des résultats
         for i, result in enumerate(results):
-            for j, case in enumerate(result):
-                 if str(self.text).upper() in str(case).upper():
-                    res_label = ResultLabel(smalltext=result[j], bigtext = result, display=self.displayresult,carte=self.master.carte, master=self.resultats)
-                    self.label_collection.append(res_label)
-                    self.label_collection[i].pack(expand=True,side=tk.TOP)
+            res_label = ResultLabel(info=result, display=self.displayresult, carte=self.master.carte, master=self.resultats)
+            self.label_collection.append(res_label)
+            self.label_collection[i].pack(side=tk.TOP, fill="x")
 
-    #Fonction qui crée le frame des résultats
+    # Fonction qui crée le frame des résultats
     def frame(self):
-        self.resultats = ctk.CTkFrame(self, width=280, height=1000, border_width=2, border_color="black", bg_color="white",fg_color="gray75")
+        self.resultats = ctk.CTkFrame(self, width=280, height=1000, bg_color="white", fg_color="white")
         self.resultats.pack_propagate(False)
-        self.resultats.pack(expand=1,fill="both")
+        self.resultats.pack(expand=1, fill="both")
 
-    #Fonction event callback du bouton gauche
-    def gauche(self):
-        if self.nb_page>1:
-            self.nb_page = 1
-            self.max = False
-            self.search(self.text, 0)
+    # Fonction event callback du bouton gauche
+    def bt_gauche(self):
+        if self.current_page > 1:
+            self.current_page -= 1
+            self.search()
 
-    #Fonction event callback du bouton droite
-    def droite(self):
-        if not self.max:
-            self.nb_page +=1
-            self.search(self.text, 1)
+    # Fonction event callback du bouton droite
+    def bt_droite(self):
+        if self.nb_page == "..." or self.current_page < self.nb_page:
+            self.current_page += 1
+            self.search()
 
-    #Fonction qui rafraîchit le dataframe
-    def reloadData(self):
-        self.datasearch = self.master.data.drop(columns=['habitat','type_observation']).to_numpy()
+    # Fonction qui rafraîchit le dataframe
+    def reload_data(self):
+        self.data = self.master.data.drop(columns='type_observation', errors='ignore').reset_index(drop=True)
+        self.search_data = self.data[['nom_commun', 'especes']]
 
-    #Fonction qui affiche les informations détaillées du résultat cliqué dans le label
+    # Fonction qui affiche les informations détaillées du résultat cliqué dans le label
     def displayresult(self, line):
         tab = ""
-        tab += "Date : "+ str(line[0])+ "\n"
-        tab += "Plan d'eau : "+ str(line[1])+ "\n"
-        tab += "Région : "+ str(line[2])+ "\n"
-        tab += "Latitude : "+ str(line[3])+ ", Longitude : "+ str(line[4])+"\n"
-        tab += "Groupe : "+ str(line[5])+"\n"
-        tab += "Nom latin : "+ str(line[6])+ "\n"
-        tab += "Espèce : "+ str(line[7])
+        tab += "Date : " + str(line['date']) + "\n"
+        tab += "Plan d'eau : " + str(line['nom_plan_eau']) + "\n"
+        tab += "Région : " + str(line['region']) + "\n"
+        tab += "Latitude : " + str(line['latitude']) + ", Longitude : " + str(line['longitude']) + "\n"
+        tab += "Groupe : " + str(line['groupe']) + "\n"
+        tab += "Nom latin : " + str(line['especes']) + "\n"
+        tab += "Espèce : " + str(line['nom_commun'])
         self.display_label.configure(text=tab, text_color="black")
 
-#Classe de un label résultat
-class ResultLabel(ctk.CTkLabel):
-    def __init__(self, smalltext, bigtext, display,carte, master=None):
+
+# Classe de un label résultat
+class ResultLabel(ctk.CTkFrame):
+    def __init__(self, info, display, carte, master=None):
         super().__init__(master)
         self.master = master
         self.display = display
-        self.carte=carte
-        self.smalltext = smalltext
-        self.bigtext = bigtext
+        self.carte = carte
+        self.info = info
 
-        self.configure(text=smalltext, fg_color="white", width=197,text_color="black")
-        self.bind("<ButtonRelease-1>", command=lambda event:self.on_res_click(self.bigtext))
+        title = ctk.CTkLabel(self, text=info['nom_commun'], text_color="black", font=("Helvetica", 15, "bold"))
+        subtitle = ctk.CTkLabel(self, text=info['especes'], text_color="gray25", font=("Helvetica", 12, "italic"))
+        text = info['region'] + " - " + info['date']
+        text = ctk.CTkLabel(self, text=text, text_color="black", font=("Helvetica", 10, "italic"))
+        title.grid(row=0, column=0, pady=(4, 0))
+        subtitle.grid(row=1, column=0)
+        text.grid(row=2, column=0, pady=(0, 4))
+
+        self.grid_columnconfigure(0, weight=1)
+        self.configure(bg_color="white", fg_color="transparent", border_color="black", border_width=2)
+
+        for child in self.winfo_children():
+            child.bind("<ButtonRelease-1>", command=lambda event: self.on_res_click(self.info))
+            child.bind("<Enter>", self.on_hover)
+            child.bind("<Leave>", self.on_leave)
+        self.bind("<Enter>", self.on_hover) # for testing
+        self.bind("<Leave>", self.on_leave)
 
     def on_res_click(self, line):
         self.display(line)
         try:
-            line4=float(line[4])
-            line3 = float(line[3])
+            lon = float(line['longitude'])
+            lat = float(line['latitude'])
         except TypeError:
             self.carte.del_waypoint()
             return
-        self.carte.set_waypoint(line4,line3)
+        self.carte.set_waypoint(lon, lat)
+
+    def on_hover(self, event):
+        # self.configure(bg_color="gray75")
+        self.configure(border_color="maroon", border_width=3)
+    def on_leave(self, event):
+        # self.configure(bg_color="white")
+        self.configure(border_color="black", border_width=2)
