@@ -1,22 +1,19 @@
 # main.py
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk
-
-from click import style
-
 from recherche import SearchWidget
-from dataframe import create_dataframe
+from dataframe import create_dataframe, save_dataframe
 from pseudo_carte import PseudoCarte
 from ajout_observation import addObsWidget
 
-class MainApp(ctk.CTk):
+file_path = "BD_EAE_faunique_Quebec.scsv"
 
+class MainApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.geometry(f"{self.winfo_screenwidth()}x{self.winfo_screenheight()-75}+{-10}+{0}")
         self.configure(fg_color="white")
-        self.data = create_dataframe("BD_EAE_faunique_Quebec.scsv")
+        self.data = create_dataframe(file_path)
         self.title("Aqua-Inva")
         self.carte = PseudoCarte(data=self.data, master=self)
         self.search_widget = None
@@ -25,6 +22,12 @@ class MainApp(ctk.CTk):
         self.create_menu()
         self.show_accueil()
         self.rowconfigure(0, weight=1)
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        """Sauvegarde les données avant de fermer l'application"""
+        save_dataframe(self.data, file_path)
+        self.destroy()
 
     def show_accueil(self):
         self.clear_main_frame()
@@ -57,7 +60,6 @@ class MainApp(ctk.CTk):
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=0)
         self.columnconfigure(2, weight=0)
-        # self.create_menu()
 
     def create_menu(self):
         menu_bar = tk.Menu(self)
