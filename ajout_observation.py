@@ -1,8 +1,8 @@
 #Groupe-Widget d'ajout d'observation et ses fonctionnalités
 
 import customtkinter as ctk
-import tkinter as tk
 from datetime import date
+from fonction import popup
 
 #Classe principale
 class addObsWidget(ctk.CTkFrame):
@@ -55,13 +55,13 @@ class addObsWidget(ctk.CTkFrame):
 
         #Vérification des champs
         if self.eauNomEntry.get()=="":
-            self.popup("Erreur", "Veuillez entrer un plan d'eau")
+            popup("Erreur", "Veuillez entrer un plan d'eau")
             return
         if self.nomEntry.get()=="":
-            self.popup("Erreur", "Veuillez entrer un nom d'espèce")
+            popup("Erreur", "Veuillez entrer un nom d'espèce")
             return
         
-        self.popup("Choisir une localisation", "Veuillez cliquez sur la carte à l'endroit où l'espèce a été observée") #Appel popup localisation
+        popup("Choisir une localisation", "Veuillez cliquez sur la carte à l'endroit où l'espèce a été observée") #Appel popup localisation
         self.mainButton.configure(command=self.clickedAddthird) #Changer pour attendre un clic après avoir eu la localisation
 
     #Si le bouton est cliqué une troisième fois
@@ -86,10 +86,10 @@ class addObsWidget(ctk.CTkFrame):
         try:
             self.master.data.to_csv("BD_EAE_faunique_Quebec.scsv", index=False, sep=';',encoding='latin1') #Sauvegarde
         except ValueError as e : #Si pandas ne peut pas sauvegarder le dataframe dans le csv, ça veut dire que le csv est ouvert ailleurs
-            self.popup("Erreur", "Le fichier de données est ouvert ailleurs, veuillez le fermer")
+            popup("Erreur", "Le fichier de données est ouvert ailleurs, veuillez le fermer")
             self.refresh()
 
-        self.popup("Succès!", "L'observation a été ajoutée à la base de données avec succès!")
+        popup("Succès!", "L'observation a été ajoutée à la base de données avec succès!")
         self.refresh() #Rafraîchissement
 
     #Fonction de rafraîchissement
@@ -106,13 +106,3 @@ class addObsWidget(ctk.CTkFrame):
         #Rafraîchissement du bouton
         self.mainButton.destroy()
         self.create_mainwidget()
-
-    #Pour afficher un popup
-    def popup(self, title, text):
-        popup = tk.Toplevel()
-        popup.title(title)
-        popup.geometry(f"{50+len(text)*8}x100+{popup.winfo_screenwidth() // 2}+{popup.winfo_screenheight() // 2}")
-        label = tk.Label(popup,text=text, font=("Arial", 12))
-        label.pack(pady=20)
-        close_button = tk.Button(popup, text="OK", command=popup.destroy)
-        close_button.pack(pady=10)

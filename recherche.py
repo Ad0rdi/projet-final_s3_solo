@@ -1,5 +1,6 @@
 # Groupe-Widget de recherche et ses fonctionnalités
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from main import MainApp
 
@@ -8,6 +9,7 @@ import pandas as pd
 import difflib
 import customtkinter as ctk
 import tkinter as tk
+from widget import StarCheckbox
 
 
 # Classe principale
@@ -19,7 +21,7 @@ class SearchWidget(ctk.CTkFrame):
         self.content = tk.StringVar()
         self.content.trace("w", self.on_text_change)
         self.after_id = None
-        self.load_delay=250 # ms
+        self.load_delay = 250  # ms
 
         self.data = data.drop(columns='type_observation', errors='ignore').reset_index(drop=True)
         self.search_data = self.data[['nom_commun', 'especes']]
@@ -62,11 +64,12 @@ class SearchWidget(ctk.CTkFrame):
                 self.button_right.configure(state=tk.DISABLED)
                 return
 
-            #Filtre les résultats selon le texte entré
+            # Filtre les résultats selon le texte entré
             min_sim_ratio = 0.8  # ratio minimal de similitude des deux strings
-            masque = self.search_data.map(lambda x: text.lower() in x.lower() or difflib.SequenceMatcher(a=x.lower(), b=text.lower()).quick_ratio() >= min_sim_ratio )
+            masque = self.search_data.map(
+                lambda x: text.lower() in x.lower() or difflib.SequenceMatcher(a=x.lower(), b=text.lower()).quick_ratio() >= min_sim_ratio)
             results = self.search_data[masque.any(axis=1)].reset_index(drop=False)
-            self.results_data = self.data.iloc[results['index']]
+            self.results_data = self.data.iloc[results['index']].reset_index(drop=False)
 
             self.nb_page = math.ceil(self.results_data.shape[0] / self.nb_res_par_page)
             self.current_page = 1
@@ -75,7 +78,6 @@ class SearchWidget(ctk.CTkFrame):
 
         start = (self.current_page - 1) * 7
         for i, row in self.results_data[start:].iterrows():
-            # print(nb, ";", i, " : ", row['nom_commun'], " - ", row['especes'])
             list_results.append(row)
             if len(list_results) >= self.nb_res_par_page:
                 break
@@ -128,7 +130,6 @@ class SearchWidget(ctk.CTkFrame):
         text_page = str(self.current_page) + "/" + str(self.nb_page)
         self.label_page.configure(text=text_page)
 
-
         if self.current_page < self.nb_page:
             self.button_right.configure(state=tk.ACTIVE)
         else:
@@ -144,7 +145,7 @@ class SearchWidget(ctk.CTkFrame):
 
         # #Crée un widget label pour chacun des résultats
         for i, result in enumerate(results):
-            res_label = ResultLabel(info=result, display=self.displayresult, carte=self.master.carte, master=self.resultats)
+            res_label = ResultLabel(info=result, display=self.displayresult, carte=self.master.carte, callback_fav=self.modify_favoris, master=self.resultats)
             self.label_collection.append(res_label)
             self.label_collection[i].pack(side=tk.TOP, fill="x")
 
@@ -183,12 +184,18 @@ class SearchWidget(ctk.CTkFrame):
         tab += "Espèce : " + str(line['nom_commun'])
         self.display_label.configure(text=tab, text_color="black")
 
+    def modify_favoris(self,line_id,state):
+        self.results_data.at[self.results_data[self.results_data['index']==line_id].index[0],'favoris'] = state
+        self.data.at[line_id,'favoris'] = state
+        self.master.data.at[line_id,'favoris'] = state
+
 
 # Classe de un label résultat
 class ResultLabel(ctk.CTkFrame):
-    def __init__(self, info, display, carte, master=None):
+    def __init__(self, info, display, carte,callback_fav=None, master=None):
         super().__init__(master)
         self.master = master
+        self.callback_fav = callback_fav
         self.display = display
         self.carte = carte
         self.info = info
@@ -197,18 +204,23 @@ class ResultLabel(ctk.CTkFrame):
         subtitle = ctk.CTkLabel(self, text=info['especes'], text_color="gray25", font=("Helvetica", 12, "italic"))
         text = info['region'] + " - " + info['date']
         text = ctk.CTkLabel(self, text=text, text_color="black", font=("Helvetica", 10, "italic"))
-        title.grid(row=0, column=0, pady=(4, 0))
-        subtitle.grid(row=1, column=0)
-        text.grid(row=2, column=0, pady=(0, 4))
+        title.grid(row=0, column=0, pady=(4, 0),columnspan=2)
+        subtitle.grid(row=1, column=0,columnspan=2)
+        text.grid(row=2, column=0, pady=(0, 4),columnspan=2)
+
+        etoile = StarCheckbox(self, default=info['favoris'], callback=self.on_star_click, size=30)
+        etoile.grid(row=1, column=1, padx=5)
 
         self.grid_columnconfigure(0, weight=1)
         self.configure(bg_color="white", fg_color="transparent", border_color="black", border_width=2)
 
         for child in self.winfo_children():
-            child.bind("<ButtonRelease-1>", command=lambda event: self.on_res_click(self.info))
+            if not isinstance(child, StarCheckbox):
+                child.bind("<ButtonRelease-1>", command=lambda event: self.on_res_click(self.info))
             child.bind("<Enter>", self.on_hover)
             child.bind("<Leave>", self.on_leave)
-        self.bind("<Enter>", self.on_hover) # for testing
+        self.bind("<ButtonRelease-1>", lambda event: self.on_res_click(self.info))
+        self.bind("<Enter>", self.on_hover)
         self.bind("<Leave>", self.on_leave)
 
     def on_res_click(self, line):
@@ -222,8 +234,11 @@ class ResultLabel(ctk.CTkFrame):
         self.carte.set_waypoint(lon, lat)
 
     def on_hover(self, event):
-        # self.configure(bg_color="gray75")
         self.configure(border_color="maroon", border_width=3)
+
     def on_leave(self, event):
-        # self.configure(bg_color="white")
         self.configure(border_color="black", border_width=2)
+
+    def on_star_click(self, event):
+        if self.callback_fav:
+            self.callback_fav(self.info['index'],event)
