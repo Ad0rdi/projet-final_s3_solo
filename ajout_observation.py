@@ -1,4 +1,7 @@
 #Groupe-Widget d'ajout d'observation et ses fonctionnalités
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from main import MainApp
 
 import customtkinter as ctk
 from datetime import date
@@ -8,7 +11,7 @@ from fonction import popup
 class addObsWidget(ctk.CTkFrame):
     def __init__(self, master=None):
         super().__init__(master)
-        self.master = master
+        self.master:'MainApp' = master
         self.configure(fg_color="transparent")
 
         #Initialisation des widgets
@@ -71,8 +74,6 @@ class addObsWidget(ctk.CTkFrame):
         y = self.master.carte.y
         region = self.master.carte.region
 
-        #Ajout de la ligne
-
         #Plaçage de buffers si jamais ces champs sont vides
         if self.habitatEntry.get()!="": habitat=self.habitatEntry.get()
         else: habitat = "Non spécifié"
@@ -82,17 +83,12 @@ class addObsWidget(ctk.CTkFrame):
         else: latin = "Non spécifié"
 
         #Ajout de la ligne
-        self.master.data.loc[len(self.master.data)]=[str(date.today()), self.eauNomEntry.get(), habitat, region, y, x, groupe, latin, self.nomEntry.get(), "Ajouté par utilisateur via Aqua-Inva"]
-        try:
-            self.master.data.to_csv("BD_EAE_faunique_Quebec.scsv", index=False, sep=';',encoding='latin1') #Sauvegarde
-        except ValueError as e : #Si pandas ne peut pas sauvegarder le dataframe dans le csv, ça veut dire que le csv est ouvert ailleurs
-            popup("Erreur", "Le fichier de données est ouvert ailleurs, veuillez le fermer")
-            self.refresh()
+        self.master.data.loc[len(self.master.data)]=[str(date.today()), self.eauNomEntry.get(), habitat, region, y, x, groupe, latin, self.nomEntry.get(), "Ajouté par utilisateur via Aqua-Inva", False]
+        self.refresh()
 
         popup("Succès!", "L'observation a été ajoutée à la base de données avec succès!")
-        self.refresh() #Rafraîchissement
+        self.refresh()
 
-    #Fonction de rafraîchissement
     def refresh(self):
         self.master.search_widget.reload_data()
 
