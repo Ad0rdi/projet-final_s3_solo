@@ -6,7 +6,7 @@ from dataframe import create_dataframe, save_dataframe
 from pseudo_carte import PseudoCarte
 from ajout_observation import addObsWidget
 
-file_path = "BD_EAE_faunique_Quebec.scsv"
+file_path = "BD_EAE_faunique_Quebec.csv"
 
 class MainApp(ctk.CTk):
     def __init__(self):
@@ -77,5 +77,5 @@ class MainApp(ctk.CTk):
 
 if __name__ == "__main__":
     app = MainApp()
-    app.wm_iconbitmap('Aqua-inva.ico')
+    app.wm_iconbitmap('Aqua-inva_minimalistic.ico')
     app.mainloop()
