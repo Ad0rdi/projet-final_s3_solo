@@ -32,3 +32,21 @@ def popup(title, text):
     popup.geometry(f"{popup.winfo_reqwidth()}x{popup.winfo_reqheight()}+{popup.winfo_screenwidth() // 2 - popup.winfo_reqwidth() // 2}+{popup.winfo_screenheight() // 2 - popup.winfo_reqheight() // 2}")
 
     popup.wait_window()
+
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+def rgb_to_hex(rgb_color):
+    return '#{:02x}{:02x}{:02x}'.format(*rgb_color)
+
+def add_colors(hex_color1, hex_color2):
+    rgb1 = hex_to_rgb(hex_color1)
+    rgb2 = hex_to_rgb(hex_color2)
+    added_rgb = tuple(min(255, c1 + c2) for c1, c2 in zip(rgb1, rgb2))
+    return rgb_to_hex(added_rgb)
+
+def darken_color(hex_color, amount=30):
+    rgb = hex_to_rgb(hex_color)
+    darkened_rgb = tuple(max(0, c - amount) for c in rgb)
+    return rgb_to_hex(darkened_rgb)
