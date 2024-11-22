@@ -116,9 +116,10 @@ class PseudoCarte(ctk.CTkFrame):
                     self.real_polygons.append(Polygon(poly))
 
         self.save_simple_map()
+        self.after(1000,self.rezoom)
         self.master.bind("<KeyPress>", self.key_pressed)
         self.canvas.bind("<MouseWheel>", self.on_scroll)
-        self.canvas.bind("<Motion>", self.moved)
+        # self.canvas.bind("<Motion>", self.moved)
         self.canvas.bind("<B1-Motion>", self.begin_drag)
         self.canvas.bind("<ButtonRelease-1>", self.end_drag)
 
