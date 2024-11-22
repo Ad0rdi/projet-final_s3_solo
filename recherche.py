@@ -65,14 +65,7 @@ class SearchWidget(ctk.CTkFrame):
         if text is not None:  # Si pas de texte, c'est qu'on change de page
             self.results_data = pd.DataFrame(columns=self.data.columns)
             text = text.strip()
-            if text == "" or text == "Rechercher":
-                self.label_page.configure(text="-")
-                self.resultats.destroy()
-                self.frame()
-                self.button_left.configure(state=tk.DISABLED)
-                self.button_right.configure(state=tk.DISABLED)
-                self.filtre_bouton.configure(state=tk.DISABLED)
-                return
+
             self.filtre_bouton.configure(state=tk.NORMAL)
 
             # Filtre les résultats selon le texte entré
@@ -147,6 +140,7 @@ class SearchWidget(ctk.CTkFrame):
         self.display_label.configure(text="Date : AAAA-MM-JJ\nPlan d'eau :\nRégion : \nLatitude : Y, Longitude X\nNom latin :\nEspèce :",
                                      bg_color="white", text_color="black")
         self.display_label.grid(row=0, column=1, sticky="n", padx=5)
+        self.search(text="")
 
     # Fonction d'affichage des résultats
     def display(self, results):
@@ -218,9 +212,10 @@ class SearchWidget(ctk.CTkFrame):
         self.master.data.at[line_id, 'favoris'] = state
 
     def filtre_callback(self, filtres):
-        self.filtre_reset = ctk.CTkButton(self.filtre_frame, text="Réinitialiser", command=self.reset_filtres, bg_color="white", fg_color="#1f6aa5",
-                                          text_color="snow")
-        self.filtre_reset.pack()
+        if not self.filtre_reset:
+            self.filtre_reset = ctk.CTkButton(self.filtre_frame, text="Réinitialiser", command=self.reset_filtres, bg_color="white", fg_color="#1f6aa5",
+                                              text_color="snow")
+            self.filtre_reset.pack()
         if not filtres['region']:
             filtres['region'] = []
         if not filtres['plan_eau']:
