@@ -11,14 +11,24 @@ from dataframe import create_dataframe
 from fonction import hex_to_rgb, add_colors, darken_color
 
 
-class Filtre(ctk.CTkFrame):
-    def __init__(self, data: 'pd.DataFrame', master=None):
+class FiltreRecherche(ctk.CTkToplevel):
+    def __init__(self, data: 'pd.DataFrame', master=None, callback=None):
         super().__init__(master)
+        self.overrideredirect(True)  # Enlève les bordures de la fenêtre
+        # Centre dans l'écran
         self.configure(fg_color="white")
-
+        self.callback = callback
         self.date = None
+        self.plan_eau = None
+        self.region = None
 
         self.create_widgets(data=data)
+        self.geometry((
+            f"{self.winfo_reqwidth()}x{self.winfo_reqheight()}+{self.winfo_screenwidth() // 2 - self.winfo_reqwidth() // 2}+{self.winfo_screenheight() // 2 - self.winfo_reqheight() // 2}"))
+
+    def rezise(self):
+        self.geometry((
+            f"{self.winfo_reqwidth()}x{self.winfo_reqheight()}+{self.winfo_screenwidth() // 2 - self.winfo_reqwidth() // 2}+{self.winfo_screenheight() // 2 - self.winfo_reqheight() // 2}"))
 
     def create_widgets(self, data):
         self.grid_rowconfigure(0, weight=0)
@@ -27,7 +37,7 @@ class Filtre(ctk.CTkFrame):
         self.grid_rowconfigure(3, weight=0)
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
-        quitter = ctk.CTkButton(self, text="x", command=self.master.destroy, bg_color="transparent", fg_color="salmon", text_color="black", width=30,
+        quitter = ctk.CTkButton(self, text="x", command=self.destroy, bg_color="transparent", fg_color="salmon",hover_color="#f8321b", text_color="black", width=30,
                                 height=30, font=ctk.CTkFont(size=15, family="monospace"))
         quitter.place(relx=1.0, x=-10, y=10, anchor='ne')  # Positionner en haut à droite
         titre = ctk.CTkLabel(self, text="Filtres", font=ctk.CTkFont(size=20), text_color="black")
@@ -36,30 +46,23 @@ class Filtre(ctk.CTkFrame):
         self.date = TimeRangeSelector(data['date'], self)
         self.date.grid(row=1, column=0, columnspan=2, pady=10)
 
-
-        # plan_eau = self.filter_plan_eau(data['nom_plan_eau'])
-        # plan_eau.pack(side="top", pady=10)
         self.plan_eau = SelectorFromList(self, data=data['nom_plan_eau'], title="Plans d'eau", theme_color="#80dbf5")
         self.plan_eau.grid(row=2, column=0, pady=10)
 
-        self.region = SelectorFromList(self, data=data['region'], title="Region",theme_color="#51b755")
+        self.region = SelectorFromList(self, data=data['region'], title="Region", theme_color="#51b755")
         self.region.grid(row=2, column=1, pady=10)
 
-        apply = ctk.CTkButton(self, text="Appliquer", command=self.filter, bg_color="transparent", fg_color="lightblue", text_color="black")
+        apply = ctk.CTkButton(self, text="Appliquer", command=self.filter, bg_color="transparent", fg_color="lightblue", hover_color="#9bc1cd",text_color="black")
         apply.grid(row=3, column=0, columnspan=2, pady=10)
 
-
-    def filter_plan_eau(self, data):
-        frame = ctk.CTkFrame(self)
-        frame.configure(bg_color="transparent", fg_color="#f5a580")
-        liste = sorted(set([st for st in data.values]))
-
-        recherche = ctk.CTkEntry(self, )
-
-        return frame
-
     def filter(self):
-        pass
+        filters = {
+            "date": self.date.get(),
+            "plan_eau": self.plan_eau.get(),
+            "region": self.region.get()
+        }
+        self.callback(filters)
+        self.destroy()
 
 
 class TimeRangeSelector(ctk.CTkFrame):
@@ -99,8 +102,9 @@ class TimeRangeSelector(ctk.CTkFrame):
     def get(self):
         return {"min": self.slider_min.get(), "max": self.slider_max.get()}
 
+
 class SelectorFromList(ctk.CTkFrame):
-    def __init__(self, master=None, data=None,title=None,theme_color="#6e6e6e", **kwargs):
+    def __init__(self, master=None, data=None, title=None, theme_color="#6e6e6e", **kwargs):
         super().__init__(master, **kwargs)
 
         self.configure(bg_color="transparent", fg_color=theme_color)
@@ -111,7 +115,8 @@ class SelectorFromList(ctk.CTkFrame):
 
         self.update_request = None
         self.search_var = tk.StringVar()
-        self.search_entry = ctk.CTkEntry(self, placeholder_text="Rechercher...", textvariable=self.search_var, fg_color=add_colors(theme_color, "#606060"),text_color=darken_color(theme_color, 100))
+        self.search_entry = ctk.CTkEntry(self, placeholder_text="Rechercher...", textvariable=self.search_var,
+                                         fg_color=add_colors(theme_color, "#606060"), text_color=darken_color(theme_color, 100))
         self.search_entry.pack(side="top", fill="x", padx=10, pady=10)
         self.search_var.trace("w", self.updated)
 
@@ -130,18 +135,24 @@ class SelectorFromList(ctk.CTkFrame):
         self.canvas.bind("<Leave>", self.unbind_scroll)
         self.scrollbar.configure(command=self.canvas.yview)
 
-        self.inner_frame = ctk.CTkFrame(self.canvas,fg_color=theme_color)
+        self.inner_frame = ctk.CTkFrame(self.canvas, fg_color=theme_color)
         self.canvas.create_window((0, 0), window=self.inner_frame, anchor="nw", width=self.canvas.winfo_reqwidth())
 
-        self.switches = {name: ctk.CTkSwitch(self.inner_frame,text=name,bg_color=darken_color(theme_color,150),text_color=add_colors(theme_color,"#0c0c0c")) for name in sorted(set(data.values))}
+        self.switches = {}
+        self.after(100,self.load_switches, data, theme_color)
+
+    def load_switches(self, data, theme_color):
+        self.switches = {
+            name: ctk.CTkSwitch(self.inner_frame, text=name, bg_color=darken_color(theme_color, 150), text_color=add_colors(theme_color, "#0c0c0c"))
+            for name in sorted(set(data.values))}
 
         self.update_list()
+        self.master.rezise()
 
-    def updated(self,*args):
+    def updated(self, *args):
         if self.update_request:
             self.after_cancel(self.update_request)
         self.after(250, self.update_list)
-
 
     def update_list(self):
         search_term = self.search_var.get().lower()
@@ -154,26 +165,27 @@ class SelectorFromList(ctk.CTkFrame):
         self.inner_frame.update_idletasks()
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-    def bind_scroll(self,event):
+    def bind_scroll(self, event):
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-    def unbind_scroll(self,event):
+
+    def unbind_scroll(self, event):
         self.canvas.unbind_all("<MouseWheel>")
+
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def get(self):
-        result =[]
+        result = []
         for name, switch in self.switches.items():
             if switch.get():
                 result.append(name)
-        if not result:
-            return self.switches.keys()
-        return result
+        return result if result else None
+
 
 if __name__ == "__main__":
     data_frame = create_dataframe("BD_EAE_faunique_Quebec.csv")
     root = ctk.CTk()
     root.geometry("800x600")
     root.configure(bg_color="white")
-    Filtre(data_frame, master=root).pack(expand=True, fill="both")
+    FiltreRecherche(data_frame, master=root)
     root.mainloop()
