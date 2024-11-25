@@ -148,7 +148,11 @@ class SearchWidget(ctk.CTkFrame):
         self.master.carte.del_waypoint()
         self.resultats.destroy()
 
-        text_page = str(self.current_page) + "/" + str(self.nb_page)
+        # Affichage du numéro de page
+        if self.nb_page ==0:
+            text_page = "..."
+        else:
+            text_page = str(self.current_page) + "/" + str(self.nb_page)
         self.label_page.configure(text=text_page)
 
         if self.current_page < self.nb_page:

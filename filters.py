@@ -4,6 +4,7 @@ from array import array
 import customtkinter as ctk
 import tkinter as tk
 import pandas as pd
+import time
 from customtkinter import CTkFrame
 from darkdetect import theme
 
@@ -93,10 +94,10 @@ class TimeRangeSelector(ctk.CTkFrame):
         self.date_text.pack(side="top", pady=10)
 
     def update_date_slider(self, event, qui):
-        if qui == "min" and self.slider_min.get() >= self.slider_max.get():
-            self.slider_max.set(self.slider_min.get() + 1)
-        elif qui == "max" and self.slider_max.get() <= self.slider_min.get():
-            self.slider_min.set(self.slider_max.get() - 1)
+        if qui == "min" and self.slider_min.get() > self.slider_max.get():
+            self.slider_max.set(self.slider_min.get())
+        elif qui == "max" and self.slider_max.get() < self.slider_min.get():
+            self.slider_min.set(self.slider_max.get())
         self.date_text.configure(text=f"{int(self.slider_min.get())} - {int(self.slider_max.get())}")
 
     def get(self):
@@ -108,6 +109,7 @@ class SelectorFromList(ctk.CTkFrame):
         super().__init__(master, **kwargs)
 
         self.configure(bg_color="transparent", fg_color=theme_color)
+        self.loading=ctk.CTkLabel(self,text="Chargement...",font=ctk.CTkFont(size=15),text_color="snow",bg_color="black")
 
         if title:
             titre = ctk.CTkLabel(self, text=title, font=ctk.CTkFont(size=15), text_color=darken_color(theme_color, 100))
@@ -138,16 +140,29 @@ class SelectorFromList(ctk.CTkFrame):
         self.inner_frame = ctk.CTkFrame(self.canvas, fg_color=theme_color)
         self.canvas.create_window((0, 0), window=self.inner_frame, anchor="nw", width=self.canvas.winfo_reqwidth())
 
-        self.switches = {}
-        self.after(100,self.load_switches, data, theme_color)
-
-    def load_switches(self, data, theme_color):
-        self.switches = {
-            name: ctk.CTkSwitch(self.inner_frame, text=name, bg_color=darken_color(theme_color, 150), text_color=add_colors(theme_color, "#0c0c0c"))
-            for name in sorted(set(data.values))}
-
-        self.update_list()
         self.master.rezise()
+        self.switches = {}
+        self.after(50,self.load_switches, data, theme_color)
+
+    def load_switches(self, data, theme_color,start=0):
+        for i,name in enumerate(sorted(set(data.values))[start:]):
+            print(name)
+            switch = ctk.CTkSwitch(self.inner_frame, text=name, bg_color=darken_color(theme_color,150),text_color=add_colors(theme_color,"0c0c0c"),state=tk.DISABLED)
+            self.switches[name]=switch
+            if i>9: # Quand il a plus de 10 valeur attendre 10 ms avant de charger les prochaines
+                self.after(10,self.load_switches,data,theme_color,start+i+1)
+                break
+        else:
+            self.loading.destroy()
+            self.update_list()
+            self.master.rezise()
+            for switch in self.switches.values():
+                switch.configure(state=tk.NORMAL)
+
+        if start <10: # Après avoir chargé les 10 premières valeurs charger les autres en arrirère plan
+            self.update_list()
+            self.loading.place(x=self.winfo_reqwidth() / 2, y=self.winfo_reqheight() / 2, anchor='center')
+            self.loading.tkraise()
 
     def updated(self, *args):
         if self.update_request:
