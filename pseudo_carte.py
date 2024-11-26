@@ -248,6 +248,13 @@ class PseudoCarte(ctk.CTkFrame):
             polygon_id = self.canvas.create_polygon(points, fill=add_colors(self.poly_color[i],"#1a1a1a"), outline="black", width=2)
             self.canvas.tag_bind(polygon_id, "<ButtonRelease-1>", self.on_polygon_click)
 
+        #Crée les marqueur avant les waypoint pour qu'ils soient en dessous
+        if self.marqueur_pos: #Crée un marqueur pour chaque marqueur
+            for pos in self.marqueur_pos:
+                points = self.translate_poly_from_point_to_points(pos,self.waypoint)
+                self.canvas.create_polygon(points, fill=self.marqueur_col, outline="black", width=3,tags="marqueur")
+
+
         if self.waypoint_pos: #Crée un waypoint s'il est présent
             points = self.translate_poly_from_point_to_points(self.waypoint_pos,self.waypoint)
 
@@ -258,10 +265,6 @@ class PseudoCarte(ctk.CTkFrame):
             self.canvas.tag_bind(ids, "<ButtonRelease-1>", self.on_polygon_click)
 
 
-        if self.marqueur_pos: #Crée un marqueur pour chaque marqueur
-            for pos in self.marqueur_pos:
-                points = self.translate_poly_from_point_to_points(pos,self.waypoint)
-                self.canvas.create_polygon(points, fill=self.marqueur_col, outline="black", width=3,tags="marqueur")
 
     def on_polygon_click(self, event):
         if not self.move_center:
@@ -296,7 +299,7 @@ class PseudoCarte(ctk.CTkFrame):
         self.draw()
 
     def del_marqueur(self):
-        self.marqueur_pos = None
+        self.marqueur_pos = []
         self.draw()
 
     def screen_pos_to_lon_lat(self, x, y):
