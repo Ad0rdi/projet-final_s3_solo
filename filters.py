@@ -146,10 +146,9 @@ class SelectorFromList(ctk.CTkFrame):
 
     def load_switches(self, data, theme_color,start=0):
         for i,name in enumerate(sorted(set(data.values))[start:]):
-            print(name)
             switch = ctk.CTkSwitch(self.inner_frame, text=name, bg_color=darken_color(theme_color,150),text_color=add_colors(theme_color,"0c0c0c"),state=tk.DISABLED)
             self.switches[name]=switch
-            if i>9: # Quand il a plus de 10 valeur attendre 10 ms avant de charger les prochaines
+            if i>9: # Quand il a plus de 10 valeurs attendre 10 ms avant de charger les prochaines.
                 self.after(10,self.load_switches,data,theme_color,start+i+1)
                 break
         else:
