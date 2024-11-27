@@ -70,7 +70,7 @@ class SearchWidget(ctk.CTkFrame):
 
             self.master.carte.del_marqueur()
             self.afficher_tout_bouton.configure(state=tk.NORMAL)
-            self.marqueur_stop=True
+            self.marqueur_stop = True
             self.filtre_bouton.configure(state=tk.NORMAL)
 
             # Filtre les résultats selon le texte entré
@@ -84,6 +84,7 @@ class SearchWidget(ctk.CTkFrame):
                 m_region if self.filtre_current['region'] else True)].reset_index(drop=False)
             self.results_data = self.data.iloc[results['index']].reset_index(drop=False)
 
+            self.nb_res_par_page = max(self.resultats.winfo_height() // 120,1)
             self.nb_page = math.ceil(self.results_data.shape[0] / self.nb_res_par_page)
             self.current_page = 1
 
@@ -117,15 +118,15 @@ class SearchWidget(ctk.CTkFrame):
         self.filtre_frame = ctk.CTkFrame(self, bg_color="white", fg_color="white")
         self.filtre_frame.pack(side=tk.TOP)
 
-            #Bouton afficher tout
-        self.afficher_tout_bouton = ctk.CTkButton(self.filtre_frame, text="Afficher tout",command=self.afficher_tout_resultats, bg_color="white",
-                                             fg_color="#1faab5", hover_color="#19828a",text_color="#150a05",text_color_disabled="#3f6f3f")
+        # Bouton afficher tout
+        self.afficher_tout_bouton = ctk.CTkButton(self.filtre_frame, text="Afficher tout", command=self.afficher_tout_resultats, bg_color="white",
+                                                  fg_color="#1faab5", hover_color="#19828a", text_color="#150a05", text_color_disabled="#3f6f3f")
         self.afficher_tout_bouton.pack()
         self.afficher_tout_bouton.configure(state=tk.DISABLED)
-            # Bouton filtre
+        # Bouton filtre
         self.filtre_bouton = ctk.CTkButton(self.filtre_frame, text="Filtres",
                                            command=lambda: FiltreRecherche(self.data, master=self, callback=self.filtre_callback), bg_color="white",
-                                           fg_color="#1faab5", hover_color="#19828a",text_color="#150a05",text_color_disabled="#3f6f3f")
+                                           fg_color="#1faab5", hover_color="#19828a", text_color="#150a05", text_color_disabled="#3f6f3f")
         self.filtre_bouton.pack()
         self.filtre_bouton.configure(state=tk.DISABLED)
 
@@ -153,7 +154,7 @@ class SearchWidget(ctk.CTkFrame):
         self.display_label.configure(text="Date : AAAA-MM-JJ\nPlan d'eau :\nRégion : \nLatitude : Y, Longitude X\nNom latin :\nEspèce :",
                                      bg_color="white", text_color="black")
         self.display_label.grid(row=0, column=1, sticky="n", padx=5)
-        self.search(text="")
+        self.after(100,self.search,"")
 
     # Fonction d'affichage des résultats
     def display(self, results):
@@ -162,7 +163,7 @@ class SearchWidget(ctk.CTkFrame):
         self.resultats.destroy()
 
         # Affichage du numéro de page
-        if self.nb_page ==0:
+        if self.nb_page == 0:
             text_page = "..."
         else:
             text_page = str(self.current_page) + "/" + str(self.nb_page)
@@ -230,7 +231,8 @@ class SearchWidget(ctk.CTkFrame):
 
     def filtre_callback(self, filtres):
         if not self.filtre_reset:
-            self.filtre_reset = ctk.CTkButton(self.filtre_frame, text="Réinitialiser", command=self.reset_filtres, bg_color="white", fg_color="#1f6aa5",
+            self.filtre_reset = ctk.CTkButton(self.filtre_frame, text="Réinitialiser", command=self.reset_filtres, bg_color="white",
+                                              fg_color="#1f6aa5",
                                               text_color="snow")
             self.filtre_reset.pack()
         if not filtres['region']:
@@ -246,28 +248,28 @@ class SearchWidget(ctk.CTkFrame):
         self.search(text=self.content.get())
         self.filtre_reset.destroy()
 
-    def afficher_tout_resultats(self,start=0):
-        if start ==0: #Si on est dans la première boucle
-            self.master.carte.del_marqueur() #On supprime les marqueurs déjà affichés
+    def afficher_tout_resultats(self, start=0):
+        if start == 0:  # Si on est dans la première boucle
+            self.master.carte.del_marqueur()  # On supprime les marqueurs déjà affichés
             self.text_marq = ctk.CTkLabel(self.master, text="Affichage de tous les résultats...", font=("Helvetica", 15, "bold"), text_color="black")
-            self.text_marq.place(x=self.master.winfo_width()/2.5,y=self.master.winfo_height()/3,anchor='center')
+            self.text_marq.place(x=self.master.winfo_width() / 2.5, y=self.master.winfo_height() / 3, anchor='center')
             self.text_marq.tkraise()
-            self.marqueur_stop=False #On autorise l'affichage des marqueurs
-            self.afficher_tout_bouton.configure(state=tk.DISABLED) #Impossible de relancer l'affichage quand il est en cours
+            self.marqueur_stop = False  # On autorise l'affichage des marqueurs
+            self.afficher_tout_bouton.configure(state=tk.DISABLED)  # Impossible de relancer l'affichage quand il est en cours
         if not self.marqueur_stop:
-            for i,result in enumerate(self.results_data[start:].iterrows()):
+            for i, result in enumerate(self.results_data[start:].iterrows()):
                 lon = result[1]["longitude"]
                 lat = result[1]["latitude"]
-                self.master.carte.add_marqueur(lon,lat)
-                if i>10:
-                    self.after(100,self.afficher_tout_resultats,start+i+1)
+                self.master.carte.add_marqueur(lon, lat)
+                if i > 10:
+                    self.after(100, self.afficher_tout_resultats, start + i + 1)
                     break
             else:
                 self.text_marq.destroy()
                 text = ctk.CTkLabel(self.master, text="Marqueurs chargés", font=("Helvetica", 30, "bold"), text_color="black")
-                text.place(x=self.master.winfo_width()/2.5,y=self.master.winfo_height()/3,anchor='center')
+                text.place(x=self.master.winfo_width() / 2.5, y=self.master.winfo_height() / 3, anchor='center')
                 text.tkraise()
-                self.after(2_000,text.destroy)
+                self.after(2_000, text.destroy)
                 self.afficher_tout_bouton.configure(state=tk.NORMAL)
 
 
