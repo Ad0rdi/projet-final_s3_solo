@@ -154,7 +154,7 @@ class SearchWidget(ctk.CTkFrame):
         self.display_label.configure(text="Date : AAAA-MM-JJ\nPlan d'eau :\nRégion : \nLatitude : Y, Longitude X\nNom latin :\nEspèce :",
                                      bg_color="white", text_color="black")
         self.display_label.grid(row=0, column=1, sticky="n", padx=5)
-        self.after(100,self.search,"")
+        self.after(1_000,self.search,"")
 
     # Fonction d'affichage des résultats
     def display(self, results):
