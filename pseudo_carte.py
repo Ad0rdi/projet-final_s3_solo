@@ -1,5 +1,9 @@
 # Fichier pour la pseudo carte
-from typing import TYPE_CHECKING
+from idlelib.pyparse import trans
+from typing import TYPE_CHECKING, overload
+
+from fonction import add_colors
+
 if TYPE_CHECKING:
     from main import MainApp
 
@@ -14,8 +18,11 @@ from functools import partial
 from graph_evolution import GraphEvolution
 from quebec_info import region_info
 
-color = ["blue", "darkorange", "indigo", "yellow", "purple", "orange", "brown", "pink", "teal", "plum", "coral", "orchid",
-         "lime", "skyblue", "navy", "darkgreen", "yellowgreen"]
+# color = ["blue", "darkorange", "indigo", "yellow", "purple", "orange", "brown", "pink", "teal", "plum", "coral", "orchid",
+#          "lime", "skyblue", "navy", "darkgreen", "yellowgreen"]
+# Couleur d'en haut mais en hexadecimal
+color = ["#0000FF", "#FF8C00", "#4B0082", "#FFFF00", "#800080", "#FFA500", "#A52A2A", "#FFC0CB", "#008080", "#DDA0DD", "#FF7F50", "#DA70D6",
+         "#00FF00", "#87CEEB", "#000080", "#006400", "#9ACD32"]
 
 poly_id_to_reg = {0: 11, 1: 2, 2: 10, 3: 17, 4: 14, 5: 7, 6: 15, 7: 16, 8: 8, 9: 6, 10: 5, 11: 13, 12: 1, 13: 12, 14: 4,
                   15: 3, 16: 9, 17: 9, 18: 9}
@@ -34,7 +41,7 @@ class PseudoCarte(ctk.CTkFrame):
         self.master:'MainApp'=master
         self.data = data
         self.graph = None
-        self.canvas = ctk.CTkCanvas(self,bg="#d0e4f5",)
+        self.canvas = tk.Canvas(self,bg="#d0e4f5")
         self.canvas.pack(expand=True, fill='both')
 
         # Les polygones de la carte
@@ -51,6 +58,9 @@ class PseudoCarte(ctk.CTkFrame):
         self.waypoint = circle.union(triangle)
         self.waypoint_color = "red"
         self.waypoint_pos = None
+        #Marqueur muiltiple
+        self.marqueur_col = "#90EE90"
+        self.marqueur_pos = []
 
         # Les limites de la carte (pour le scaling)
         self.max_x = -56.934926885456164
@@ -116,9 +126,10 @@ class PseudoCarte(ctk.CTkFrame):
                     self.real_polygons.append(Polygon(poly))
 
         self.save_simple_map()
+        self.after(1000,self.rezoom)
         self.master.bind("<KeyPress>", self.key_pressed)
         self.canvas.bind("<MouseWheel>", self.on_scroll)
-        self.canvas.bind("<Motion>", self.moved)
+        # self.canvas.bind("<Motion>", self.moved)
         self.canvas.bind("<B1-Motion>", self.begin_drag)
         self.canvas.bind("<ButtonRelease-1>", self.end_drag)
 
@@ -176,12 +187,30 @@ class PseudoCarte(ctk.CTkFrame):
         # Calculer le changement de offset_x et offset_y
         self.offset_x = (self.offset_x - event.x) * scale_facteur + event.x
         self.offset_y = (self.offset_y - event.y) * scale_facteur + event.y
-
-        # Appliquer la mise à l'échelle
-        self.canvas.scale('all', event.x, event.y, scale_facteur, scale_facteur)
         self.scale *= scale_facteur
 
+        # Appliquer la mise à l'échelle
+        for id_ in self.canvas.find_all():
+            if "waypoint" in self.canvas.gettags(id_) or "marqueur" in self.canvas.gettags(id_):
+                old = self.canvas.coords(id_) #Prend l'ancienne position
+                old_x = old[30]
+                old_y = old[89]
+
+                circle = self.canvas.create_oval(old_x,old_y,old_x,old_y) #Crée un cercle en son emplacement
+                self.canvas.scale(circle, event.x, event.y, scale_facteur, scale_facteur) #Bouge le cercle selon le scaling
+
+                new = self.canvas.coords(circle)[:2] #Prend la nouvelle position
+                new_x = new[0]
+                new_y = new[1]
+                self.canvas.move(id_,new_x-old_x,new_y-old_y) # Bouge l'objet selon la différence entre les deux positions
+
+                self.canvas.delete(circle) #Supprime le cercle qui n'est plus utile
+                continue
+
+            self.canvas.scale(id_, event.x, event.y, scale_facteur, scale_facteur) #Scale les autres objets
+
     def move_poly(self, poly, scale=None):
+        """Déplace un polygone et le scale et retourne une liste de points"""
         if not scale:
             scale = self.scale
         points = []
@@ -192,29 +221,50 @@ class PseudoCarte(ctk.CTkFrame):
             points.append((px, py))
         return points
 
+    def translate_poly_from_point_to_points(self,xy,poly:Polygon):
+        """Translate un polygon à partir d'un point et retourne une liste de points"""
+        points = []
+        x, y = self.translate_point_from_origin(xy)
+        for point in poly.exterior.coords:
+            px, py = point
+            px += float(x)
+            py += float(y)
+            points.append((px, py))
+        return points
+
+    def translate_point_from_origin(self, xy):
+        x, y = xy
+        x = (float(x) - self.min_x) * (self.scale - (self.scale * 0.35)) + self.offset_x
+        y = (self.max_y - float(y)) * self.scale + self.offset_y
+        return x,y
+
+
+
     def draw(self):
         """Afficher la carte"""
         self.canvas.delete("all")
-        for i, poly in enumerate(self.simplified_map):
+        for i, poly in enumerate(self.simplified_map): #Crée les polygones
             points = self.move_poly(poly)
-            polygon_id = self.canvas.create_polygon(points, fill=self.poly_color[i], outline="black", width=2)
+            polygon_id = self.canvas.create_polygon(points, fill=add_colors(self.poly_color[i],"#1a1a1a"), outline="black", width=2)
             self.canvas.tag_bind(polygon_id, "<ButtonRelease-1>", self.on_polygon_click)
 
-        if self.waypoint_pos:
-            points = []
-            x, y = self.waypoint_pos
-            x = (float(x)  - self.min_x) * (self.scale - (self.scale * 0.35)) + self.offset_x
-            y = (self.max_y - float(y)) * self.scale + self.offset_y
-            for point in self.waypoint.exterior.coords:
-                px, py = point
-                px += float(x)
-                py += float(y)
-                points.append((px, py))
+        #Crée les marqueur avant les waypoint pour qu'ils soient en dessous
+        if self.marqueur_pos: #Crée un marqueur pour chaque marqueur
+            for pos in self.marqueur_pos:
+                points = self.translate_poly_from_point_to_points(pos,self.waypoint)
+                self.canvas.create_polygon(points, fill=self.marqueur_col, outline="black", width=3,tags="marqueur")
 
-            ids = self.canvas.create_polygon(points, fill=self.waypoint_color, outline="white", width=5)
+
+        if self.waypoint_pos: #Crée un waypoint s'il est présent
+            points = self.translate_poly_from_point_to_points(self.waypoint_pos,self.waypoint)
+
+            ids = self.canvas.create_polygon(points, fill=self.waypoint_color, outline="white", width=5,tags="waypoint")
             self.canvas.tag_bind(ids, "<ButtonRelease-1>", self.on_polygon_click)
-            ids = self.canvas.create_polygon(points, fill=self.waypoint_color, outline="black", width=2)
+
+            ids = self.canvas.create_polygon(points, fill=self.waypoint_color, outline="black", width=2,tags="waypoint")
             self.canvas.tag_bind(ids, "<ButtonRelease-1>", self.on_polygon_click)
+
+
 
     def on_polygon_click(self, event):
         if not self.move_center:
@@ -242,6 +292,14 @@ class PseudoCarte(ctk.CTkFrame):
 
     def del_waypoint(self):
         self.waypoint_pos = None
+        self.draw()
+
+    def add_marqueur(self, lon, lat):
+        self.marqueur_pos.append((lon, lat))
+        self.draw()
+
+    def del_marqueur(self):
+        self.marqueur_pos = []
         self.draw()
 
     def screen_pos_to_lon_lat(self, x, y):
