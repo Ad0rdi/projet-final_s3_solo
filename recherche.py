@@ -48,6 +48,8 @@ class SearchWidget(ctk.CTkFrame):
         self.filtre_frame = None
         self.filtres = None
         self.filtre_current = {"date": {'min': int(data['date'].min()[:4]), 'max': int(data['date'].max()[:4])}, "plan_eau": [], "region": []}
+        self.afficher_tout_bouton = None
+        self.marqueur_stop = False
         self.filtre_bouton = None
         self.filtre_reset = None
 
@@ -66,6 +68,9 @@ class SearchWidget(ctk.CTkFrame):
             self.results_data = pd.DataFrame(columns=self.data.columns)
             text = text.strip()
 
+            self.master.carte.del_marqueur()
+            self.afficher_tout_bouton.configure(state=tk.NORMAL)
+            self.marqueur_stop=True
             self.filtre_bouton.configure(state=tk.NORMAL)
 
             # Filtre les résultats selon le texte entré
@@ -83,6 +88,7 @@ class SearchWidget(ctk.CTkFrame):
             self.current_page = 1
 
             if self.results_data.empty:
+                self.afficher_tout_bouton.configure(state=tk.DISABLED)
                 self.filtre_bouton.configure(state=tk.DISABLED)
 
         list_results = []
@@ -110,6 +116,13 @@ class SearchWidget(ctk.CTkFrame):
         # Bouton pour ouvrir les filtres
         self.filtre_frame = ctk.CTkFrame(self, bg_color="white", fg_color="white")
         self.filtre_frame.pack(side=tk.TOP)
+
+            #Bouton afficher tout
+        self.afficher_tout_bouton = ctk.CTkButton(self.filtre_frame, text="Afficher tout",command=self.afficher_tout_resultats, bg_color="white",
+                                             fg_color="#1faab5", hover_color="#19828a",text_color="#150a05",text_color_disabled="#3f6f3f")
+        self.afficher_tout_bouton.pack()
+        self.afficher_tout_bouton.configure(state=tk.DISABLED)
+            # Bouton filtre
         self.filtre_bouton = ctk.CTkButton(self.filtre_frame, text="Filtres",
                                            command=lambda: FiltreRecherche(self.data, master=self, callback=self.filtre_callback), bg_color="white",
                                            fg_color="#1faab5", hover_color="#19828a",text_color="#150a05",text_color_disabled="#3f6f3f")
@@ -232,6 +245,30 @@ class SearchWidget(ctk.CTkFrame):
                                "region": []}
         self.search(text=self.content.get())
         self.filtre_reset.destroy()
+
+    def afficher_tout_resultats(self,start=0):
+        if start ==0: #Si on est dans la première boucle
+            self.master.carte.del_marqueur() #On supprime les marqueurs déjà affichés
+            self.text_marq = ctk.CTkLabel(self.master, text="Affichage de tous les résultats...", font=("Helvetica", 15, "bold"), text_color="black")
+            self.text_marq.place(x=self.master.winfo_width()/2.5,y=self.master.winfo_height()/3,anchor='center')
+            self.text_marq.tkraise()
+            self.marqueur_stop=False #On autorise l'affichage des marqueurs
+            self.afficher_tout_bouton.configure(state=tk.DISABLED) #Impossible de relancer l'affichage quand il est en cours
+        if not self.marqueur_stop:
+            for i,result in enumerate(self.results_data[start:].iterrows()):
+                lon = result[1]["longitude"]
+                lat = result[1]["latitude"]
+                self.master.carte.add_marqueur(lon,lat)
+                if i>10:
+                    self.after(100,self.afficher_tout_resultats,start+i+1)
+                    break
+            else:
+                self.text_marq.destroy()
+                text = ctk.CTkLabel(self.master, text="Marqueurs chargés", font=("Helvetica", 30, "bold"), text_color="black")
+                text.place(x=self.master.winfo_width()/2.5,y=self.master.winfo_height()/3,anchor='center')
+                text.tkraise()
+                self.after(2_000,text.destroy)
+                self.afficher_tout_bouton.configure(state=tk.NORMAL)
 
 
 # Classe de un label résultat

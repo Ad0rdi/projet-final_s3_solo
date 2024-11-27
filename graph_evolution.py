@@ -45,7 +45,7 @@ class GraphEvolution(CTkFrame):
                     else:
                         wanted_data = pd.concat([wanted_data, data.iloc[[i]]], ignore_index=True)
         else:
-            raise ValueError("Nécésite un centre et un rayon ou un id de région")
+            raise ValueError("Nécessite un centre et un rayon ou un id de région")
 
         self.data = wanted_data
         self.create_graph()
