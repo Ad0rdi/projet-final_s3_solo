@@ -230,11 +230,12 @@ class SearchWidget(ctk.CTkFrame):
         self.master.data.at[line_id, 'favoris'] = state
 
     def filtre_callback(self, filtres):
-        if not self.filtre_reset:
-            self.filtre_reset = ctk.CTkButton(self.filtre_frame, text="Réinitialiser", command=self.reset_filtres, bg_color="white",
-                                              fg_color="#1f6aa5",
-                                              text_color="snow")
-            self.filtre_reset.pack()
+        if self.filtre_reset:
+            self.filtre_reset.destroy()
+        self.filtre_reset = ctk.CTkButton(self.filtre_frame, text="Réinitialiser", command=self.reset_filtres, bg_color="white",
+                                          fg_color="#1f6aa5",
+                                          text_color="snow")
+        self.filtre_reset.pack()
         if not filtres['region']:
             filtres['region'] = []
         if not filtres['plan_eau']:
