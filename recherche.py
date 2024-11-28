@@ -1,17 +1,15 @@
 # Groupe-Widget de recherche et ses fonctionnalités
 from typing import TYPE_CHECKING
-
-from filters import FiltreRecherche
-
-if TYPE_CHECKING:
+if TYPE_CHECKING: #Pour vérifier les types
     from main import MainApp
 
 import math
-import pandas as pd
 import difflib
-import customtkinter as ctk
+import pandas as pd
 import tkinter as tk
+import customtkinter as ctk
 from widget import StarCheckbox
+from filters import FiltreRecherche
 
 
 # Classe principale
@@ -20,84 +18,90 @@ class SearchWidget(ctk.CTkFrame):
         super().__init__(master)
         self.master: 'MainApp' = master
 
+        #String de la recherche
         self.content = tk.StringVar()
         self.content.trace("w", self.on_text_change)
         self.after_id = None
-        self.load_delay = 250  # ms
+        self.load_delay = 250  # ms de délai avant de lancer la recherche
 
+        # Data et résultats
         self.data: pd.DataFrame = data.drop(columns='type_observation', errors='ignore').reset_index(drop=True)
         self.search_data = self.data[['nom_commun', 'especes']]
         self.results_data = None
+        self.resultats = None
         self.label_collection = []
 
         # Variables de pagination
         self.nb_page = 1
         self.current_page = 1
         self.nb_res_par_page = 7
-
-        self.configure(height=self.master.winfo_screenheight() - 200, width=5, bg_color="white", fg_color="white")
         self.label_page = None
-        self.display_label = None
-        self.resultats = None
 
-        # buttons
+        self.display_label = None
+        self.configure(height=self.master.winfo_screenheight() - 200, width=5, bg_color="white", fg_color="white")
+
+        # Buttons
         self.button_left = None
         self.button_right = None
 
         # Filtres
         self.filtre_frame = None
         self.filtres = None
-        self.filtre_current = {"date": {'min': int(data['date'].min()[:4]), 'max': int(data['date'].max()[:4])}, "plan_eau": [], "region": []}
+        self.filtre_current = {"date": {'min': int(data['date'].min()[:4]), 'max': int(data['date'].max()[:4])}, "plan_eau": [], "region": []} # Filtres actuels pour la recherche
         self.afficher_tout_bouton = None
-        self.marqueur_stop = False
+        self.marqueur_stop = False # Variable pour arrêter l'affichage des marqueurs
         self.filtre_bouton = None
         self.filtre_reset = None
 
         self.create_widgets()
 
-    def on_text_change(self, *args):
+    def on_text_change(self, *args): # Callback du changement de texte
+        #Appeler la fonction de recherche si le texte n'a pas changé depuis self.load_delay ms
         if self.after_id is not None:
             self.after_cancel(self.after_id)
         self.after_id = self.after(self.load_delay, self.search, self.content.get())
 
     # Fonction qui recherche dans le dataframe
-    def search(self, text=None, ):
+    def search(self, text=None, ): #Calcule les résultats de la recherche
 
         # Si la recherche est lancée à partir d'un changement de texte, relancer la recherche à partir du début du dataframe.
         if text is not None:  # Si pas de texte, c'est qu'on change de page
-            self.results_data = pd.DataFrame(columns=self.data.columns)
-            text = text.strip()
+            self.results_data = pd.DataFrame(columns=self.data.columns) #Copie vide du dataframe pour les résultats
+            text = text.strip() # Enlève les espaces inutiles
 
-            self.master.carte.del_marqueur()
-            self.afficher_tout_bouton.configure(state=tk.NORMAL)
+            self.master.carte.del_marqueur() # Supprime les marqueurs déjà affichés
             self.marqueur_stop = True
+            self.afficher_tout_bouton.configure(state=tk.NORMAL)
             self.filtre_bouton.configure(state=tk.NORMAL)
 
             # Filtre les résultats selon le texte entré
             min_sim_ratio = 0.8  # ratio minimal de similitude des deux strings
+            # Chaque m_ est un différent filtre pour les résultats
             m_rechercher = self.search_data.map(
                 lambda x: text.lower() in x.lower() or difflib.SequenceMatcher(a=x.lower(), b=text.lower()).quick_ratio() >= min_sim_ratio)
             m_date = self.data['date'].apply(lambda x: self.filtre_current['date']['min'] <= int(x[:4]) <= self.filtre_current['date']['max'])
             m_eau = self.data['nom_plan_eau'].isin(self.filtre_current['plan_eau'])
             m_region = self.data['region'].isin(self.filtre_current['region'])
+
+            # Filtre les résultats selon les filtres actuels
             results = self.data[m_rechercher.any(axis=1) & m_date & (m_eau if self.filtre_current['plan_eau'] else True) & (
                 m_region if self.filtre_current['region'] else True)].reset_index(drop=False)
             self.results_data = self.data.iloc[results['index']].reset_index(drop=False)
 
-            self.nb_res_par_page = max(self.resultats.winfo_height() // 120,1)
-            self.nb_page = math.ceil(self.results_data.shape[0] / self.nb_res_par_page)
+            self.nb_res_par_page = max(self.resultats.winfo_height() // 120,1) #Calcule le nb de résultats par page selon la grandeur
+            self.nb_page = math.ceil(self.results_data.shape[0] / self.nb_res_par_page) #Calcule le nb de pages
             self.current_page = 1
 
-            if self.results_data.empty:
+            if self.results_data.empty: #Si aucun résultat, désactive les boutons de navigation
                 self.afficher_tout_bouton.configure(state=tk.DISABLED)
                 self.filtre_bouton.configure(state=tk.DISABLED)
 
         list_results = []
 
-        start = (self.current_page - 1) * 7
+        start = (self.current_page - 1) * self.nb_res_par_page #Début de la page
         for i, row in self.results_data[start:].iterrows():
             list_results.append(row)
-            if len(list_results) >= self.nb_res_par_page:
+            if len(list_results) >= self.nb_res_par_page: #Si on a assez de résultats quitter
                 break
         self.display(list_results)
 
@@ -123,6 +127,7 @@ class SearchWidget(ctk.CTkFrame):
                                                   fg_color="#1faab5", hover_color="#19828a", text_color="#150a05", text_color_disabled="#3f6f3f")
         self.afficher_tout_bouton.pack()
         self.afficher_tout_bouton.configure(state=tk.DISABLED)
+
         # Bouton filtre
         self.filtre_bouton = ctk.CTkButton(self.filtre_frame, text="Filtres",
                                            command=lambda: FiltreRecherche(self.data, master=self, callback=self.filtre_callback), bg_color="white",
@@ -134,19 +139,19 @@ class SearchWidget(ctk.CTkFrame):
         self.frame()
 
         # Frame du menu pour changer de page
-        pagemenu = ctk.CTkFrame(self, bg_color="white", fg_color="white")
-        pagemenu.pack(side=tk.BOTTOM)
+        page_menu = ctk.CTkFrame(self, bg_color="white", fg_color="white")
+        page_menu.pack(side=tk.BOTTOM)
 
-        # Bouton pour retourner au début
-        self.button_left = ctk.CTkButton(pagemenu, text="<-", command=self.bt_gauche, width=30)
+        # Bouton pour aller a la page précédente
+        self.button_left = ctk.CTkButton(page_menu, text="<-", command=self.bt_gauche, width=30)
         self.button_left.grid(row=0, column=0, sticky="n", padx=20)
 
         # Bouton pour aller à la page suivante
-        self.button_right = ctk.CTkButton(pagemenu, text="->", command=self.bt_droite, width=30)
+        self.button_right = ctk.CTkButton(page_menu, text="->", command=self.bt_droite, width=30)
         self.button_right.grid(row=0, column=2, sticky="n", padx=20)
 
         # Label qui affiche le numéro de page
-        self.label_page = ctk.CTkLabel(pagemenu, text="1", bg_color="white", fg_color="white", text_color="black")
+        self.label_page = ctk.CTkLabel(page_menu, text="...", bg_color="white", fg_color="white", text_color="black")
         self.label_page.grid(row=0, column=1, sticky="n", padx=5)
 
         # Label qui affiche infos supplémentaires
@@ -154,7 +159,8 @@ class SearchWidget(ctk.CTkFrame):
         self.display_label.configure(text="Date : AAAA-MM-JJ\nPlan d'eau :\nRégion : \nLatitude : Y, Longitude X\nNom latin :\nEspèce :",
                                      bg_color="white", text_color="black")
         self.display_label.grid(row=0, column=1, sticky="n", padx=5)
-        self.after(1_000,self.search,"")
+
+        self.after(1_000,self.search,"") #Lance une recherche vide pour afficher tous les résultats
 
     # Fonction d'affichage des résultats
     def display(self, results):
@@ -169,12 +175,12 @@ class SearchWidget(ctk.CTkFrame):
             text_page = str(self.current_page) + "/" + str(self.nb_page)
         self.label_page.configure(text=text_page)
 
-        if self.current_page < self.nb_page:
+        if self.current_page < self.nb_page: #Si on est pas à la dernière page, on active le bouton de droite
             self.button_right.configure(state=tk.ACTIVE)
         else:
             self.button_right.configure(state=tk.DISABLED)
 
-        if self.current_page > 1:
+        if self.current_page > 1: #Si on est pas à la première page, on active le bouton de gauche
             self.button_left.configure(state=tk.ACTIVE)
         else:
             self.button_left.configure(state=tk.DISABLED)
@@ -203,7 +209,7 @@ class SearchWidget(ctk.CTkFrame):
 
     # Fonction event callback du bouton droite
     def bt_droite(self):
-        if self.nb_page == "..." or self.current_page < self.nb_page:
+        if self.nb_page != 0 and self.current_page < self.nb_page:
             self.current_page += 1
             self.search()
 
@@ -224,12 +230,12 @@ class SearchWidget(ctk.CTkFrame):
         tab += "Espèce : " + str(line['nom_commun'])
         self.display_label.configure(text=tab, text_color="black")
 
-    def modify_favoris(self, line_id, state):
+    def modify_favoris(self, line_id, state): # Fonction qui modifie l'état de favoris d'une ligne
         self.results_data.at[self.results_data[self.results_data['index'] == line_id].index[0], 'favoris'] = state
         self.data.at[line_id, 'favoris'] = state
         self.master.data.at[line_id, 'favoris'] = state
 
-    def filtre_callback(self, filtres):
+    def filtre_callback(self, filtres): # Fonction qui applique les filtres
         if self.filtre_reset:
             self.filtre_reset.destroy()
         self.filtre_reset = ctk.CTkButton(self.filtre_frame, text="Réinitialiser", command=self.reset_filtres, bg_color="white",
@@ -243,35 +249,36 @@ class SearchWidget(ctk.CTkFrame):
         self.filtre_current = filtres
         self.search(text=self.content.get())
 
-    def reset_filtres(self):
+    def reset_filtres(self): # Fonction qui réinitialise les filtres
         self.filtre_current = {"date": {'min': int(self.data['date'].min()[:4]), 'max': int(self.data['date'].max()[:4])}, "plan_eau": [],
                                "region": []}
         self.search(text=self.content.get())
         self.filtre_reset.destroy()
 
-    def afficher_tout_resultats(self, start=0):
+    def afficher_tout_resultats(self, start=0): # Fonction qui affiche tous les résultats avec des marqueurs sur la carte
         if start == 0:  # Si on est dans la première boucle
             self.master.carte.del_marqueur()  # On supprime les marqueurs déjà affichés
             self.text_marq = ctk.CTkLabel(self.master, text="Affichage de tous les résultats...", font=("Helvetica", 15, "bold"), text_color="black")
             self.text_marq.place(x=self.master.winfo_width() / 2.5, y=self.master.winfo_height() / 3, anchor='center')
-            self.text_marq.tkraise()
+            self.text_marq.tkraise() # Mettre au dessus
             self.marqueur_stop = False  # On autorise l'affichage des marqueurs
             self.afficher_tout_bouton.configure(state=tk.DISABLED)  # Impossible de relancer l'affichage quand il est en cours
+
         if not self.marqueur_stop:
             for i, result in enumerate(self.results_data[start:].iterrows()):
                 lon = result[1]["longitude"]
                 lat = result[1]["latitude"]
                 self.master.carte.add_marqueur(lon, lat)
-                if i > 10:
+                if i > 10: # Si on a affiché 10 marqueurs, on attend 100ms avant de continuer (pour moins de lag)
                     self.after(100, self.afficher_tout_resultats, start + i + 1)
                     break
-            else:
+            else: # Si on a fini d'afficher les marqueurs
                 self.text_marq.destroy()
                 text = ctk.CTkLabel(self.master, text="Marqueurs chargés", font=("Helvetica", 30, "bold"), text_color="black")
                 text.place(x=self.master.winfo_width() / 2.5, y=self.master.winfo_height() / 3, anchor='center')
                 text.tkraise()
-                self.after(2_000, text.destroy)
-                self.afficher_tout_bouton.configure(state=tk.NORMAL)
+                self.after(2_000, text.destroy) # On enlève le texte après 2s (pour que l'utilisateur sache que c'est fini)
+                self.afficher_tout_bouton.configure(state=tk.NORMAL) # On réactive le bouton pour afficher tous les résultats
 
 
 # Classe de un label résultat
@@ -292,6 +299,7 @@ class ResultLabel(ctk.CTkFrame):
         subtitle.grid(row=1, column=0, columnspan=2)
         text.grid(row=2, column=0, pady=(0, 4), columnspan=2)
 
+        # Étoile de favoris
         etoile = StarCheckbox(self, default=info['favoris'], callback=self.on_star_click, size=30)
         etoile.grid(row=1, column=1, padx=5)
 
@@ -299,7 +307,7 @@ class ResultLabel(ctk.CTkFrame):
         self.configure(bg_color="white", fg_color="transparent", border_color="black", border_width=2)
 
         for child in self.winfo_children():
-            if not isinstance(child, StarCheckbox):
+            if not isinstance(child, StarCheckbox): # Si on clique sur l'étoile, on ne veut pas que ça affiche les infos
                 child.bind("<ButtonRelease-1>", command=lambda event: self.on_res_click(self.info))
             child.bind("<Enter>", self.on_hover)
             child.bind("<Leave>", self.on_leave)
@@ -312,17 +320,17 @@ class ResultLabel(ctk.CTkFrame):
         try:
             lon = float(line['longitude'])
             lat = float(line['latitude'])
-        except TypeError:
+        except TypeError: # Si les coordonnées ne sont pas des nombres, on ne peut pas les afficher
             self.carte.del_waypoint()
             return
         self.carte.set_waypoint(lon, lat)
 
-    def on_hover(self, event):
+    def on_hover(self, event): # Fonction qui change la couleur du cadre lorsqu'on passe la souris dessus
         self.configure(border_color="maroon", border_width=3)
 
-    def on_leave(self, event):
+    def on_leave(self, event): # Fonction qui remet la couleur du cadre à la normale
         self.configure(border_color="black", border_width=2)
 
-    def on_star_click(self, event):
+    def on_star_click(self, event): # Fonction qui appelle le callback de favoris
         if self.callback_fav:
             self.callback_fav(self.info['index'], event)

@@ -1,9 +1,5 @@
 # Fichier pour la pseudo carte
-from idlelib.pyparse import trans
-from typing import TYPE_CHECKING, overload
-
-from fonction import add_colors
-
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import MainApp
 
@@ -15,6 +11,7 @@ import shapely
 from shapely.geometry import shape, Polygon, MultiPolygon, Point
 from functools import partial
 
+from fonction import add_colors
 from graph_evolution import GraphEvolution
 from quebec_info import region_info
 
@@ -33,7 +30,6 @@ class PseudoCarte(ctk.CTkFrame):
     Affiche une carte de la région de Québec Autocentrée et redimensionnable
     La carte apparait au premier mouvement de la souris
     Appeler *rezoom()* peu aider à afficher la carte en début
-    *save_simple_map()* comme qualité maximal de la carte
     """
 
     def __init__(self, data, master:'MainApp'=None):
@@ -51,14 +47,15 @@ class PseudoCarte(ctk.CTkFrame):
         self.simplified_map = []
         self.poly_id = []
 
-        # waypoint
+        # Waypoint
         grandeur = 25
         circle = Point(0, -grandeur * 2.5).buffer(grandeur)
         triangle = Polygon([(-grandeur / 2, -grandeur * 2), (grandeur / 2, -grandeur * 2), (0, 0)])
         self.waypoint = circle.union(triangle)
         self.waypoint_color = "red"
         self.waypoint_pos = None
-        #Marqueur muiltiple
+
+        # Marqueur muiltiple
         self.marqueur_col = "#90EE90"
         self.marqueur_pos = []
 
@@ -68,7 +65,7 @@ class PseudoCarte(ctk.CTkFrame):
         self.max_y = 62.58246570128598
         self.min_y = 44.99135832579372
 
-        # Calcule scale et offset des polygones
+        # Pour le calcul scale et offset des polygones
         self.scale = 1
         self.min_scale = 1
         self.max_scale = 1
@@ -82,21 +79,29 @@ class PseudoCarte(ctk.CTkFrame):
         self.region = "Inconnue"
 
         # type de clic (region/rayon)
+        #conteneur
         self.click_frame = ctk.CTkFrame(self, fg_color="white",border_color="black",border_width=2)
         self.click_frame.place(x=170, y=90, anchor='c')
+
+        # Variable pour le type de clic
         self.click_var = tk.StringVar(value="Info")
+
+        # Radio button pour le type de clic
         self.click_info = ctk.CTkRadioButton(self.click_frame, text="Information par région", variable=self.click_var, value="Info",text_color="black")
         self.click_info.grid(row=0, column=0, sticky='ew', padx=5,pady=5)
         self.click_label = ctk.CTkLabel(self.click_frame, text="Type de clic pour le graphique", font=ctk.CTkFont(size=12),text_color="black")
         self.click_label.grid(row=1, column=0, sticky='w', padx=5,pady=5)
+
         self.click_region = ctk.CTkRadioButton(self.click_frame, text="Par region", variable=self.click_var,
                                                value="Region",text_color="black")
         self.click_region.grid(row=2, column=0, sticky='ew',padx=5,pady=5)
         self.click_frame_rayon = ctk.CTkFrame(self.click_frame, fg_color="white")
         self.click_frame_rayon.grid(row=3, column=0, sticky='ew', padx=5,pady=5)
+
         self.click_rayon = ctk.CTkRadioButton(self.click_frame_rayon, text="Par rayon (km)", variable=self.click_var,
                                               value="Rayon",text_color="black")
         self.click_rayon.grid(row=0, column=0, sticky='nsew')
+        # Rayon du clic
         self.click_rayon_radius = tk.IntVar(value=1)
         self.click_rayon_size = tk.Scale(self.click_frame_rayon, from_=1, to=200, orient=HORIZONTAL,
                                          variable=self.click_rayon_radius, length=150)
@@ -104,6 +109,7 @@ class PseudoCarte(ctk.CTkFrame):
         self.click_radius_id = None
         self.click_radius_old = 1
 
+        # Charger les polygones
         with fiona.open("quebec_region_SHP/simplified_map.shp") as data:
             for feature in data:
                 recent_poly = []
@@ -112,26 +118,25 @@ class PseudoCarte(ctk.CTkFrame):
                 if isinstance(geom, Polygon):
                     exterior_coords = list(geom.exterior.coords)
                     recent_poly.append(exterior_coords)
-                    self.poly_color.append(color[int(feature['properties']['RES_CO_REG']) - 1])
-                    self.poly_region.append(feature['properties']['RES_CO_REG'])
+                    self.poly_color.append(color[int(feature['properties']['RES_CO_REG']) - 1]) # Crée une liste avec les couleurs dans le même ordre que les polygones
+                    self.poly_region.append(feature['properties']['RES_CO_REG']) # Crée une liste avec les régions dans le même ordre que les polygones
                 elif isinstance(geom, MultiPolygon):
                     for poly in geom.geoms:
                         exterior_coords = list(poly.exterior.coords)
                         recent_poly.append(exterior_coords)
-                        self.poly_color.append(color[int(feature['properties']['RES_CO_REG']) - 1])
-                        self.poly_region.append(feature['properties']['RES_CO_REG'])
+                        self.poly_color.append(color[int(feature['properties']['RES_CO_REG']) - 1]) # Crée une liste avec les couleurs dans le même ordre que les polygones
+                        self.poly_region.append(feature['properties']['RES_CO_REG']) # Crée une liste avec les régions dans le même ordre que les polygones
 
                 # créer les polygones
                 for poly in recent_poly:
                     self.real_polygons.append(Polygon(poly))
 
-        self.save_simple_map()
-        self.after(1000,self.rezoom)
-        self.master.bind("<KeyPress>", self.key_pressed)
-        self.canvas.bind("<MouseWheel>", self.on_scroll)
-        # self.canvas.bind("<Motion>", self.moved)
-        self.canvas.bind("<B1-Motion>", self.begin_drag)
-        self.canvas.bind("<ButtonRelease-1>", self.end_drag)
+        self.save_simple_map() # Sauvegarde une version simplifiée de la carte
+        self.after(1000,self.rezoom) # Attendre 1 seconde avant de rezoomer pour afficher la carte en début
+        self.master.bind("<KeyPress>", self.key_pressed) # Pour rezoomer avec la touche c
+        self.canvas.bind("<MouseWheel>", self.on_scroll) # Pour zoomer avec la molette
+        self.canvas.bind("<B1-Motion>", self.begin_drag) # Pour bouger la carte
+        self.canvas.bind("<ButtonRelease-1>", self.end_drag) # Pour arrêter de bouger la carte
 
     def begin_drag(self, event):
         self.canvas.unbind("<B1-Motion>")
@@ -151,11 +156,6 @@ class PseudoCarte(ctk.CTkFrame):
         self.canvas.unbind("<B1-Motion>")
         self.canvas.bind("<B1-Motion>", self.begin_drag)
         self.move_center = ()
-
-    def moved(self, event):
-        # Pour afficher la carte en début si elle est pas déjà là
-        self.rezoom()
-        self.canvas.unbind("<Motion>")
 
     def key_pressed(self, event):
         if event.char == "c":
@@ -191,7 +191,8 @@ class PseudoCarte(ctk.CTkFrame):
 
         # Appliquer la mise à l'échelle
         for id_ in self.canvas.find_all():
-            if "waypoint" in self.canvas.gettags(id_) or "marqueur" in self.canvas.gettags(id_):
+            if "waypoint" in self.canvas.gettags(id_) or "marqueur" in self.canvas.gettags(id_): #Si c'est un waypoint ou un marqueur
+                #Déplace le waypoint et les marqueurs selon le scaling sans les scaler
                 old = self.canvas.coords(id_) #Prend l'ancienne position
                 old_x = old[30]
                 old_y = old[89]
@@ -205,7 +206,7 @@ class PseudoCarte(ctk.CTkFrame):
                 self.canvas.move(id_,new_x-old_x,new_y-old_y) # Bouge l'objet selon la différence entre les deux positions
 
                 self.canvas.delete(circle) #Supprime le cercle qui n'est plus utile
-                continue
+                continue #Passe au prochain objet
 
             self.canvas.scale(id_, event.x, event.y, scale_facteur, scale_facteur) #Scale les autres objets
 
@@ -233,6 +234,7 @@ class PseudoCarte(ctk.CTkFrame):
         return points
 
     def translate_point_from_origin(self, xy):
+        """Translate un point à partir de l'origine avec le offset et le scale actuel"""
         x, y = xy
         x = (float(x) - self.min_x) * (self.scale - (self.scale * 0.35)) + self.offset_x
         y = (self.max_y - float(y)) * self.scale + self.offset_y
@@ -248,9 +250,9 @@ class PseudoCarte(ctk.CTkFrame):
             polygon_id = self.canvas.create_polygon(points, fill=add_colors(self.poly_color[i],"#1a1a1a"), outline="black", width=2)
             self.canvas.tag_bind(polygon_id, "<ButtonRelease-1>", self.on_polygon_click)
 
-        #Crée les marqueur avant les waypoint pour qu'ils soient en dessous
-        if self.marqueur_pos: #Crée un marqueur pour chaque marqueur
-            for pos in self.marqueur_pos:
+        #Crée les marqueurs avant les waypoint pour qu'ils soient en dessous
+        if self.marqueur_pos: #Crée les marqueurs s'il y en a
+            for pos in self.marqueur_pos:  #Crée un marqueur pour chaque marqueur
                 points = self.translate_poly_from_point_to_points(pos,self.waypoint)
                 self.canvas.create_polygon(points, fill=self.marqueur_col, outline="black", width=3,tags="marqueur")
 
@@ -266,43 +268,43 @@ class PseudoCarte(ctk.CTkFrame):
 
 
 
-    def on_polygon_click(self, event):
-        if not self.move_center:
+    def on_polygon_click(self, event): #Quand un polygone est cliqué
+        if not self.move_center: #Si la carte n'est pas en mouvement
             self.x, self.y = self.screen_pos_to_lon_lat(event.x, event.y)
             region_id, self.region = self.region_from_coords(coords=(self.x, self.y))
             if region_id:
-                if self.click_var.get() == "Info":
-                    show_popup(region_id)
+                if self.click_var.get() == "Info": #Si le clic est pour obtenir des informations
+                    popup_region(region_id)
                     return
                 self.canvas.update()
-                if self.click_var.get() == "Region":
+                if self.click_var.get() == "Region": #Si le clic est pour obtenir un graphique par région
                     self.graph = partial(GraphEvolution, data=self.data, region_id=region_id)
-                elif self.click_var.get() == "Rayon":
-                    self.graph_by_radius(event)
-                self.master.show_graph()
-
-    def graph_by_radius(self,event):
-        x, y = event.x,event.y
-        x, y = self.screen_pos_to_lon_lat(x, y)
-        self.graph = partial(GraphEvolution, data=self.data, center=(x, y), radius=self.click_rayon_radius.get())
+                elif self.click_var.get() == "Rayon": #Si le clic est pour obtenir un graphique par rayon
+                    self.graph = partial(GraphEvolution, data=self.data, center=(x, y), radius=self.click_rayon_radius.get())
+                self.master.show_graph() #Demander à l'application de montrer le graphique
 
     def set_waypoint(self, lon, lat):
+        """Définir un waypoint"""
         self.waypoint_pos = (lon, lat)
         self.draw()
 
     def del_waypoint(self):
+        """Supprimer le waypoint"""
         self.waypoint_pos = None
         self.draw()
 
     def add_marqueur(self, lon, lat):
+        """Ajoute un marqueur sur la carte"""
         self.marqueur_pos.append((lon, lat))
         self.draw()
 
     def del_marqueur(self):
+        """Supprime tous les marqueurs"""
         self.marqueur_pos = []
         self.draw()
 
     def screen_pos_to_lon_lat(self, x, y):
+        """Convertit les coordonnées de l'écran en coordonnées géographiques"""
         lon = ((x - self.offset_x) / (self.scale - (self.scale * 0.35))) + self.min_x
         lat = -(((y - self.offset_y) / self.scale) - self.max_y)
         return lon, lat
@@ -317,10 +319,12 @@ class PseudoCarte(ctk.CTkFrame):
         return None
 
     def get_graph_function(self):
+        """Renvoie la fonction pour créer le graphique"""
         return self.graph
 
 
-def show_popup(poly_region):
+def popup_region(poly_region):
+    """Affiche un popup avec des informations sur la région"""
     popup = tk.Toplevel()
     popup.title("Information région")
     popup.geometry(f"500x200+{popup.winfo_screenwidth() // 2 - 100}+{popup.winfo_screenheight() // 2 - 100}")

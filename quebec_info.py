@@ -1,3 +1,4 @@
+#Nom des régions du Québec
 region_info = {
     1: "Bas-Saint-Laurent",
     2: "Saguenay - Lac-Saint-Jean",

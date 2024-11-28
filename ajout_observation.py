@@ -8,7 +8,7 @@ from datetime import date
 from fonction import popup
 
 #Classe principale
-class addObsWidget(ctk.CTkFrame):
+class AddObsWidget(ctk.CTkFrame):
     def __init__(self, master=None):
         super().__init__(master)
         self.master:'MainApp' = master

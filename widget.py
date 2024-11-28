@@ -26,15 +26,15 @@ class StarCheckbox(tk.Canvas):
         color = "yellow" if self.checked else "white"
         self.star_id = self.create_polygon(points, outline="black", fill=color, width=2)
 
-    def toggle(self, event):
+    def toggle(self, event): #Callback du click
         self.checked = not self.checked
         fill_color = "yellow" if self.checked else "white"
         self.itemconfig(self.star_id, fill=fill_color)
         if self.callback: self.callback(self.checked)
 
-    def get(self):
+    def get(self): #Permet de récupérer la valeur du checkbox
         return self.checked
 
-    def set(self, value):
+    def set(self, value): #Permet de changer la valeur du checkbox
         self.checked = value
         self.draw_star()
