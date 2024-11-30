@@ -10,6 +10,7 @@ import tkinter as tk
 import customtkinter as ctk
 from widget import StarCheckbox
 from filters import FiltreRecherche
+from picture_api import PictureApi
 
 
 # Classe principale
@@ -228,7 +229,11 @@ class SearchWidget(ctk.CTkFrame):
         tab += "Groupe : " + str(line['groupe']) + "\n"
         tab += "Nom latin : " + str(line['especes']) + "\n"
         tab += "Espèce : " + str(line['nom_commun'])
-        self.display_label.configure(text=tab, text_color="black")
+        # self.display_label.configure(text=tab, text_color="black")
+        label = ctk.CTkLabel(self.display_label,text=tab, text_color="black")
+        label.grid(row=0,column=0)
+        image_label = PictureApi(title=line['especes'],master=self.display_label)
+        image_label.grid(row=0,column=1)
 
     def modify_favoris(self, line_id, state): # Fonction qui modifie l'état de favoris d'une ligne
         self.results_data.at[self.results_data[self.results_data['index'] == line_id].index[0], 'favoris'] = state
