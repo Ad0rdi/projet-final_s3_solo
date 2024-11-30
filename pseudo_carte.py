@@ -132,7 +132,7 @@ class PseudoCarte(ctk.CTkFrame):
                     self.real_polygons.append(Polygon(poly))
 
         self.save_simple_map() # Sauvegarde une version simplifiée de la carte
-        self.after(1000,self.rezoom) # Attendre 1 seconde avant de rezoomer pour afficher la carte en début
+        self.after(1000,self.rezoom,'None') # Attendre 1 seconde avant de rezoomer pour afficher la carte en début
         self.master.bind("<KeyPress>", self.key_pressed) # Pour rezoomer avec la touche c
         self.canvas.bind("<MouseWheel>", self.on_scroll) # Pour zoomer avec la molette
         self.canvas.bind("<B1-Motion>", self.begin_drag) # Pour bouger la carte
@@ -161,7 +161,7 @@ class PseudoCarte(ctk.CTkFrame):
         if event.char == "c":
             self.rezoom()
 
-    def rezoom(self):
+    def rezoom(self,event=None):
         """Rezoom la carte pour qu'elle soit centrée et remplisse l'écran"""
         # Calcule agrandissement et déplacement des polygones
         scale_x = self.canvas.winfo_width() / (self.max_x - self.min_x)
@@ -280,7 +280,7 @@ class PseudoCarte(ctk.CTkFrame):
                 if self.click_var.get() == "Region": #Si le clic est pour obtenir un graphique par région
                     self.graph = partial(GraphEvolution, data=self.data, region_id=region_id)
                 elif self.click_var.get() == "Rayon": #Si le clic est pour obtenir un graphique par rayon
-                    self.graph = partial(GraphEvolution, data=self.data, center=(x, y), radius=self.click_rayon_radius.get())
+                    self.graph = partial(GraphEvolution, data=self.data, center=(self.x, self.y), radius=self.click_rayon_radius.get())
                 self.master.show_graph() #Demander à l'application de montrer le graphique
 
     def set_waypoint(self, lon, lat):

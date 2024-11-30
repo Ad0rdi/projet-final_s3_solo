@@ -7,6 +7,8 @@ def map_range(x, in_min, in_max, out_min, out_max):
 
 #Calcule la distance entre deux points en km
 def getDistanceFromLatLonInKm(lat1,lon1,lat2,lon2) :
+    if not all(isinstance(i, (int, float)) for i in [lat1, lon1, lat2, lon2]):
+        return None
     R = 6371 # Radius of the earth in km
     dLat = deg2rad(lat2-lat1)  # deg2rad below
     dLon = deg2rad(lon2-lon1)
