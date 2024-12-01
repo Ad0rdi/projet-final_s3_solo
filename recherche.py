@@ -342,6 +342,7 @@ class ResultLabel(ctk.CTkFrame):
 		self.display = display
 		self.carte = carte
 		self.info = info
+		self.clicked = False
 
 		title = ctk.CTkLabel(self, text=info['nom_commun'], text_color="black", font=("Helvetica", 15, "bold"),
 							 wraplength=130)
@@ -352,7 +353,6 @@ class ResultLabel(ctk.CTkFrame):
 		title.grid(row=0, column=0, pady=(4, 0), columnspan=2)
 		subtitle.grid(row=1, column=0, columnspan=2)
 		text.grid(row=2, column=0, pady=(0, 4), columnspan=2)
-		print(self.winfo_reqwidth())
 
 		# Étoile de favoris
 		etoile = StarCheckbox(self, default=info['favoris'], callback=self.on_star_click, size=30)
@@ -376,6 +376,12 @@ class ResultLabel(ctk.CTkFrame):
 		self.bind("<Leave>", self.on_leave)
 
 	def on_res_click(self, line):
+		#Reset la couleur des autres labels
+		for label in self.master.master.label_collection:
+			if label!=self:
+				label.click(False)
+				label.configure(border_color="black", border_width=2)
+		self.clicked=True
 		self.display(line)
 		try:
 			lon = float(line['longitude'])
@@ -385,11 +391,19 @@ class ResultLabel(ctk.CTkFrame):
 			return
 		self.carte.set_waypoint(lon, lat)
 
+	def click(self,state):
+		self.clicked = state
+		if not state:
+			self.configure(border_color="black", border_width=2)
+
 	def on_hover(self, event):  # Fonction qui change la couleur du cadre lorsqu'on passe la souris dessus
 		self.configure(border_color="maroon", border_width=3)
 
 	def on_leave(self, event):  # Fonction qui remet la couleur du cadre à la normale
-		self.configure(border_color="black", border_width=2)
+		if not self.clicked:
+			self.configure(border_color="black", border_width=2)
+		else:
+			self.configure(border_color="#1419af", border_width=3)
 
 	def on_star_click(self, event):  # Fonction qui appelle le callback de favoris
 		if self.callback_fav:
