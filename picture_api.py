@@ -15,8 +15,7 @@ class PictureApi(ctk.CTkLabel):
 		if not os.path.exists(f"pictures/{self.title.replace(" ", "_")}.jpg"):
 			try:
 				self.download_picture()
-			except Exception as e:
-				print(e)
+			except ValueError:
 				self.configure(text="Aucune image n'est disponible", wraplength=120, text_color="black")
 				return
 

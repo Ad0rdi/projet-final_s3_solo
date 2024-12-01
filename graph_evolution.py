@@ -19,7 +19,6 @@ class GraphEvolution(CTkFrame):
 		self.configure(bg_color="white", fg_color="white")
 
 		wanted_data = pd.DataFrame(columns=data.columns)
-		print("reading data")
 		if ((center and radius) is not None) and region_id is None:  # Si on a un centre et un rayon
 			x, y = center
 			for i in range(0, data.shape[0]):  # Pour chaque ligne du dataframe vérifie si la distance est inférieure au rayon
@@ -38,7 +37,6 @@ class GraphEvolution(CTkFrame):
 
 		else:  # Si le match n'est pas possible afficher une erreur
 			raise ValueError("Nécessite un centre et un rayon ou un id de région")
-		print("data read")
 		self.data = wanted_data
 		self.create_graph()
 
@@ -51,7 +49,6 @@ class GraphEvolution(CTkFrame):
 
 		for line in self.data['nom_commun']:  # Compte le nombre d'occurences de chaque espèce
 			data[line] += 1
-		print("read occurences")
 		if not data:
 			text = ctk.CTkLabel(self, text="Aucune donnée à afficher pour cette région", font=CTkFont(size=20), text_color="black")
 			text.pack(expand=True)

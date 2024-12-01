@@ -41,10 +41,10 @@ class MainApp(ctk.CTk):
         self.search_widget.grid(row=0, column=0, padx=10, sticky="nsew")
         self.carte.grid(row=0, column=1, padx=10, sticky="nsew")
         self.addObs = AddObsWidget(master=self)
-        self.addObs.place(x=1450, y=60, anchor='ne')
+        self.addObs.place(relx=1.0, x=-30, y=60, anchor='ne')
 
-        self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=5)
+        self.columnconfigure(0, weight=0,minsize=250)
+        self.columnconfigure(1, weight=1)
         self.columnconfigure(2, weight=0)
 
     def show_graph(self):  # Affiche le graphique
