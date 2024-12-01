@@ -1,5 +1,6 @@
 # Groupe-Widget de recherche et ses fonctionnalités
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:  # Pour vérifier les types
 	from main import MainApp
 
@@ -221,6 +222,7 @@ class SearchWidget(ctk.CTkFrame):
 		self.search_data = self.data[['nom_commun', 'especes']]
 
 	# Fonction qui affiche les informations détaillées du résultat cliqué dans le label
+
 	def displayresult(self, line):
 		tab = ""
 		tab += "Date : " + str(line['date']) + "\n"
@@ -281,6 +283,8 @@ class SearchWidget(ctk.CTkFrame):
 				text.tkraise()
 				self.after(2_000, text.destroy)  # On enlève le texte après 2s (pour que l'utilisateur sache que c'est fini)
 				self.afficher_tout_bouton.configure(state=tk.NORMAL)  # On réactive le bouton pour afficher tous les résultats
+		else:
+			self.text_marq.destroy()
 
 
 class DetailLabel(ctk.CTkToplevel):
@@ -376,12 +380,12 @@ class ResultLabel(ctk.CTkFrame):
 		self.bind("<Leave>", self.on_leave)
 
 	def on_res_click(self, line):
-		#Reset la couleur des autres labels
+		# Reset la couleur des autres labels
 		for label in self.master.master.label_collection:
-			if label!=self:
+			if label != self:
 				label.click(False)
 				label.configure(border_color="black", border_width=2)
-		self.clicked=True
+		self.clicked = True
 		self.display(line)
 		try:
 			lon = float(line['longitude'])
@@ -391,7 +395,7 @@ class ResultLabel(ctk.CTkFrame):
 			return
 		self.carte.set_waypoint(lon, lat)
 
-	def click(self,state):
+	def click(self, state):
 		self.clicked = state
 		if not state:
 			self.configure(border_color="black", border_width=2)
