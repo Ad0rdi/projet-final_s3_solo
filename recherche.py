@@ -1,6 +1,5 @@
 # Groupe-Widget de recherche et ses fonctionnalités
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:  # Pour vérifier les types
 	from main import MainApp
 
@@ -50,7 +49,7 @@ class SearchWidget(ctk.CTkFrame):
 		self.filtre_frame = None
 		self.filtres = None
 		self.filtre_current = {"date": {'min': int(data['date'].min()[:4]), 'max': int(data['date'].max()[:4])}, "plan_eau": [],
-							   "region": []}  # Filtres actuels pour la recherche
+							   "region": [], "favoris": False}  # Filtres actuels pour la recherche
 		self.afficher_tout_bouton = None
 		self.marqueur_stop = False  # Variable pour arrêter l'affichage des marqueurs
 		self.filtre_bouton = None
@@ -85,10 +84,12 @@ class SearchWidget(ctk.CTkFrame):
 			m_date = self.data['date'].apply(lambda x: self.filtre_current['date']['min'] <= int(x[:4]) <= self.filtre_current['date']['max'])
 			m_eau = self.data['nom_plan_eau'].isin(self.filtre_current['plan_eau'])
 			m_region = self.data['region'].isin(self.filtre_current['region'])
+			m_favoris = self.data['favoris'] ==self.filtre_current['favoris']
 
 			# Filtre les résultats selon les filtres actuels
 			results = self.data[m_rechercher.any(axis=1) & m_date & (m_eau if self.filtre_current['plan_eau'] else True) & (
-				m_region if self.filtre_current['region'] else True)].reset_index(drop=False)
+				m_region if self.filtre_current['region'] else True) & (m_favoris if self.filtre_current['favoris'] else True)].reset_index(
+				drop=False)
 			self.results_data = self.data.iloc[results['index']].reset_index(drop=False)
 
 			self.nb_res_par_page = max(self.resultats.winfo_height() // 120, 1)  # Calcule le nb de résultats par page selon la grandeur
@@ -255,7 +256,7 @@ class SearchWidget(ctk.CTkFrame):
 
 	def reset_filtres(self):  # Fonction qui réinitialise les filtres
 		self.filtre_current = {"date": {'min': int(self.data['date'].min()[:4]), 'max': int(self.data['date'].max()[:4])}, "plan_eau": [],
-							   "region": []}
+							   "region": [],"favoris":False}
 		self.search(text=self.content.get())
 		self.filtre_reset.destroy()
 

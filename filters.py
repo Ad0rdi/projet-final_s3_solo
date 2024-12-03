@@ -1,15 +1,9 @@
 # Filtres pour la recherche
-from array import array
-
 import customtkinter as ctk
 import tkinter as tk
 import pandas as pd
-import time
-from customtkinter import CTkFrame
-from darkdetect import theme
-
 from dataframe import create_dataframe
-from fonction import hex_to_rgb, add_colors, darken_color
+from fonction import add_colors, darken_color
 
 
 # Fenêtre de filtre pour la recherche
@@ -22,6 +16,7 @@ class FiltreRecherche(ctk.CTkToplevel):
         self.date = None
         self.plan_eau = None
         self.region = None
+        self.check_favoris=None
 
         self.create_widgets(data=data)
 
@@ -51,22 +46,30 @@ class FiltreRecherche(ctk.CTkToplevel):
         self.date = TimeRangeSelector(data['date'], self)
         self.date.grid(row=1, column=0, columnspan=2, pady=10)
 
+        frame_favoris = ctk.CTkFrame(self,bg_color="transparent",fg_color="transparent")
+        frame_favoris.grid(row=2,column=0,columnspan=2,pady=10)
+        text_favoris = ctk.CTkLabel(frame_favoris,text="Afficher seulement les favoris",bg_color="white",text_color="black")
+        text_favoris.grid(row=0,column=0,padx=10)
+        self.check_favoris = ctk.CTkCheckBox(frame_favoris,text="")
+        self.check_favoris.grid(row=0,column=1,padx=10)
+
         self.plan_eau = SelectorFromList(self, data=data['nom_plan_eau'], title="Plans d'eau", theme_color="#80dbf5")
-        self.plan_eau.grid(row=2, column=0, pady=10)
+        self.plan_eau.grid(row=3, column=0, pady=10)
 
         self.region = SelectorFromList(self, data=data['region'], title="Region", theme_color="#51b755")
-        self.region.grid(row=2, column=1, pady=10)
+        self.region.grid(row=3, column=1, pady=10)
 
         # Bouton pour appliquer les filtres
         apply = ctk.CTkButton(self, text="Appliquer", command=self.filter, bg_color="transparent", fg_color="lightblue", hover_color="#9bc1cd",text_color="black")
-        apply.grid(row=3, column=0, columnspan=2, pady=10)
+        apply.grid(row=4, column=0, columnspan=2, pady=10)
 
     def filter(self):
         """Applique les filtres et ferme la fenêtre"""
         filters = {
             "date": self.date.get(),
             "plan_eau": self.plan_eau.get(),
-            "region": self.region.get()
+            "region": self.region.get(),
+            "favoris":self.check_favoris.get()
         }
         self.callback(filters)
         self.destroy()
